@@ -100,10 +100,91 @@
                   :transform cds)))
     )
   )
+ 
+(defun start-collect ()
+  (ros::wait-for-service "/seq_data_collection/start_request")
+  (setq req (instance std_srvs::TriggerRequest :init))
+  (setq res (ros::service-call "/seq_data_collection/start_request" req))
+  )
+
+(defun end-collect ()
+  (ros::wait-for-service "/seq_data_collection/end_request")
+  (setq req (instance std_srvs::TriggerRequest :init))
+  (setq res (ros::service-call "/seq_data_collection/end_request" req))
+  )
+ 
+(defun regrasp-larm ()
+    (send *ri* :stop-grasp *larm* :wait nil)
+    (setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
+                                      jsk_recognition_msgs::BoundingBoxArray 
+                                      :timeout 1000000))
+    (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+    (unless
+	(progn
+	  (send *pr2* *larm* :inverse-kinematics
+		(make-coords :pos (v+ (send hold-obj :worldpos)
+				      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
+			     :rpy #f(-0.77 1.0 -1.54))
+		:rotation-axis :t))
+      (publish-error "out of reach...")
+      (return-from grasp-target-callback nil))
+    (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+    (send *ri* :wait-interpolation)
+    (unless
+	(progn
+	  (send *pr2* *larm* :inverse-kinematics
+		(make-coords :pos (v+ (send target-obj :worldpos)
+				      (float-vector (/ (car *d_xyz*) -2) 0 0))
+			     :rpy #f(0 1.0 -1.54))
+		:rotation-axis :t))
+      (publish-error "out of reach...")
+      (return-from grasp-target-callback nil))
+    
+    (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+    (send *ri* :wait-interpolation)
+    (send *ri* :start-grasp *rarm* :wait nil)
+    (send *ri* :wait-interpolation)
+    (unix:sleep 3)
+  )
+
+
+(defun rotate-dish ()
+    (send *ri* :move-gripper :rarm 0.02 :wait nil)
+    (setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
+                                      jsk_recognition_msgs::BoundingBoxArray 
+                                      :timeout 1000000))
+    (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+    (unless
+	(progn
+	  (send *pr2* *larm* :inverse-kinematics
+		(make-coords :pos (v+ (send hold-obj :worldpos)
+				      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
+			     :rpy #f(-0.77 1.0 -1.54))
+		:rotation-axis :t))
+      (publish-error "out of reach...")
+      (return-from grasp-target-callback nil))
+    (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+    (send *ri* :wait-interpolation)
+    (unless
+	(progn
+		  (send *pr2* *larm* :inverse-kinematics
+		(make-coords :pos (v+ (send hold-obj :worldpos)
+				      (float-vector 0 (/ (car *d_xyz*) 2) 0))
+			     :rpy #f(-1.54 1.0 -1.54))
+		:rotation-axis :t))
+      (publish-error "out of reach...")
+      (return-from grasp-target-callback nil))
+    (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+    (send *ri* :wait-interpolation)
+    (send *ri* :start-grasp *rarm* :wait nil)
+    (send *ri* :wait-interpolation)
+    (unix:sleep 3)
+  )
 
 (defun grasp-target-callback (msg)
   (let ((target-obj (bounding-box->cube msg)))
     ;;(print target-obj)
+    (start-collect)
     (if *grasping-object-p*
         (progn
           (publish-warn "cancel grasping...")
@@ -131,7 +212,6 @@
 	  (print (send target-obj :worldpos))
 	  (print  *d_xyz*)
 	  )
-    
     (setq *grasp-state* "reaching")
     (publish-grasp-state)
     (publish-info "pre grasp pose...")
@@ -181,52 +261,14 @@
     (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
     (send *ri* :wait-interpolation)
     (publish-info "grasp succeeded!"))
+    (end-collect)
     
-    (send *ri* :move-gripper :rarm 0.02 :wait nil)
-    (setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
-                                      jsk_recognition_msgs::BoundingBoxArray 
-                                      :timeout 1000000))
-    ;;(setq target-point (sub-grasp-point))
-    (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
-    ;;(print target-obj)
-    (unless
-	(progn
-	  ;;(send *pr2* *rarm* :inverse-kinematics
-		;;(make-coords :pos (v+ (send hold-obj :worldpos)
-		;;		       (float-vector -130 (/ (car *d_xyz*) -2) 50))
-		;;	     :rpy #f(1.54 1.0 -1.54))
-		;;:rotation-axis :t)
-	  (send *pr2* *larm* :inverse-kinematics
-		(make-coords :pos (v+ (send hold-obj :worldpos)
-				      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
-			     :rpy #f(-0.77 1.0 -1.54))
-		:rotation-axis :t))
-      (publish-error "out of reach...")
-      (return-from grasp-target-callback nil))
- 
-    (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
-    (send *ri* :wait-interpolation)
-    (unless
-	(progn
-	  ;;(send *pr2* *rarm* :inverse-kinematics
-		;;(make-coords :pos (v+ (send hold-obj :worldpos)
-		;;		       (float-vector -130 (/ (car *d_xyz*) -2) 50))
-		;;	     :rpy #f(1.54 1.0 -1.54))
-		;;:rotation-axis :t)
-	  (send *pr2* *larm* :inverse-kinematics
-		(make-coords :pos (v+ (send hold-obj :worldpos)
-				      (float-vector 0 (/ (car *d_xyz*) 2) 0))
-			     :rpy #f(-1.54 1.0 -1.54))
-		:rotation-axis :t))
-      (publish-error "out of reach...")
-      (return-from grasp-target-callback nil))
- 
-    (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
-    (send *ri* :wait-interpolation)
-    (unix:sleep 3)
+    (rotate-dish)
+    (regrasp-larm)
+    (rotate-dish)
+    
     (send *ri* :stop-grasp *larm* :wait nil)
-   ;;(send *ri* :angle-vector-sequence)
-    
+    ;;(send *ri* :angle-vector-sequence)
     ;;(setq *grasp-state* "placing")
     ;;(publish-grasp-state)
     ;;(publish-info "placing ...")
@@ -253,7 +295,6 @@
     ;;(publish-grasp-state)
     (pr2-pregrasp-pose)
     ;;(publish-info "click tabletop object!")
-    
   )
 
 (defun wait-for-grasp-target ()
