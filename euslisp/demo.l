@@ -6,6 +6,7 @@
 (defvar *grasp-target-bounding-box-topic* "/bounding_box_marker/selected_box")
 (defvar *grasp-status-topic* "/tabletop_object_grasp_status")
 (defvar *base-frame-id* "/base_footprint")
+(defvar *grasp-bbox* "/segmentation_decomposer_ssd/boxes")
 
 (ros::load-ros-manifest "jsk_recognition_msgs")
 (ros::load-ros-manifest "jsk_rviz_plugins")
@@ -59,26 +60,26 @@
          (* (send v :y) 1000.0)
          (* (send v :z) 1000.0)))
 
-(defun sub-grasp-point ()
-    (let*(
-         (msg (one-shot-subscribe "/grasp_point" geometry_msgs::PoseStamped
-                                  ;;:after-stamp (ros::time 0)))
-                                  ))
-         (cds (when msg (ros::tf-pose->coords (send msg :pose))))
-         (base->parent
-           (when msg
-               (send *tfl* :wait-for-transform *base-frame-id* (send msg :header :frame_id) (ros::time 0) 0.1)
-               (send *tfl* :lookup-transform
-                           *base-frame-id* (send msg :header :frame_id)
-                           (ros::time 0)))))
-    ;;(print (rpy-angle (send target-point :worldrot)))
-    (setq *cds* cds)
-    (when (and cds base->parent)
-      ;;(send *tfb* :send-transform
-        (send (send base->parent :copy-worldcoords) :transform cds))
-      ;;      *base-frame-id* "target_object" (send msg :header :stamp))
-    )
-  )
+;;(defun sub-grasp-point ()
+;;    (let*(
+;;         (msg (one-shot-subscribe "/grasp_point" geometry_msgs::PoseStamped
+;;                                  ;;:after-stamp (ros::time 0)))
+;;                                  ))
+;;         (cds (when msg (ros::tf-pose->coords (send msg :pose))))
+;;         (base->parent
+;;           (when msg
+;;               (send *tfl* :wait-for-transform *base-frame-id* (send msg :header :frame_id) (ros::time 0) 0.1)
+;;               (send *tfl* :lookup-transform
+;;                           *base-frame-id* (send msg :header :frame_id)
+;;                           (ros::time 0)))))
+;;    ;;(print (rpy-angle (send target-point :worldrot)))
+;;    (setq *cds* cds)
+;;    (when (and cds base->parent)
+;;      ;;(send *tfb* :send-transform
+;;        (send (send base->parent :copy-worldcoords) :transform cds))
+;;      ;;      *base-frame-id* "target_object" (send msg :header :stamp))
+;;    )
+;;  )
 
 ;;バウンディングボックスの端を掴む
 (defun bounding-box->cube (msg)
@@ -113,77 +114,96 @@
   (setq res (ros::service-call "/seq_data_collection/end_request" req))
   )
  
+;;(defun regrasp-larm (box-msg)
 (defun regrasp-larm ()
     (send *ri* :stop-grasp *larm* :wait nil)
-    (setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
+    ;;(unless box-msg
+    ;; (publish-info "target point is nil")
+    ;; (return-from regrasp-larm nil))
+    ;;(unless (send box-msg :boxes)
+    ;; (publish-info "target point is nil")
+    ;; (return-from regrasp-larm nil))
+
+    (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                       jsk_recognition_msgs::BoundingBoxArray 
-                                      :timeout 1000000))
+                                      :timeout 10000000000))
     (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
     (unless
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send hold-obj :worldpos)
 				      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
-			     :rpy #f(-0.77 1.0 -1.54))
+			     :rpy #f(-0.77 0.6 -1.54))
 		:rotation-axis :t))
       (publish-error "out of reach...")
-      (return-from grasp-target-callback nil))
+      (return-from regrasp-larm nil))
     (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
     (send *ri* :wait-interpolation)
     (unless
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
-		(make-coords :pos (v+ (send target-obj :worldpos)
+		(make-coords :pos (v+ (send hold-obj :worldpos)
 				      (float-vector (/ (car *d_xyz*) -2) 0 0))
-			     :rpy #f(0 1.0 -1.54))
+			     :rpy #f(0.0 0.6 -1.54))
 		:rotation-axis :t))
       (publish-error "out of reach...")
-      (return-from grasp-target-callback nil))
+      (return-from regrasp-larm nil))
     
     (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
     (send *ri* :wait-interpolation)
     (send *ri* :start-grasp *rarm* :wait nil)
     (send *ri* :wait-interpolation)
+    (print "rgrasp-larm end")
     (unix:sleep 3)
   )
 
-
+;;(defun rotate-dish (msg)
 (defun rotate-dish ()
     (send *ri* :move-gripper :rarm 0.02 :wait nil)
-    (setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
+    ;;(unless msg
+    ;; (publish-info "target point is nil")
+    ;; (return-from rotate-dish nil))
+    ;;(unless (send msg :boxes)
+    ;; (publish-info "target point is nil")
+    ;; (return-from rotate-dish nil))
+
+    (setq msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                       jsk_recognition_msgs::BoundingBoxArray 
-                                      :timeout 1000000))
-    (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+                                      :timeout 1000000000))
+    (print "rotate dish one-shot end")
+    (setq hold-obj (bounding-box->cube (elt (send msg :boxes) 0)))
     (unless
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send hold-obj :worldpos)
 				      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
-			     :rpy #f(-0.77 1.0 -1.54))
+			     :rpy #f(-0.77 0.6 -1.54))
 		:rotation-axis :t))
       (publish-error "out of reach...")
-      (return-from grasp-target-callback nil))
+      (return-from rotate-dish nil))
     (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
     (send *ri* :wait-interpolation)
     (unless
 	(progn
-		  (send *pr2* *larm* :inverse-kinematics
+	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send hold-obj :worldpos)
 				      (float-vector 0 (/ (car *d_xyz*) 2) 0))
-			     :rpy #f(-1.54 1.0 -1.54))
+			     :rpy #f(-1.54 0.6 -1.54))
 		:rotation-axis :t))
       (publish-error "out of reach...")
-      (return-from grasp-target-callback nil))
+      (return-from rotate-dish nil))
     (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
     (send *ri* :wait-interpolation)
     (send *ri* :start-grasp *rarm* :wait nil)
     (send *ri* :wait-interpolation)
     (unix:sleep 3)
+    (print "finish rotating")
+    ;;(ros::unsubscribe *grasp-bbox*)
+    ;;(return-from *wait-for-box* nil)
   )
 
 (defun grasp-target-callback (msg)
   (let ((target-obj (bounding-box->cube msg)))
-    ;;(print target-obj)
     (start-collect)
     (if *grasping-object-p*
         (progn
@@ -198,12 +218,12 @@
 	  (send *pr2* *rarm* :inverse-kinematics
 		(make-coords :pos (v+ (send target-obj :worldpos)
 				       (float-vector -130 (/ (car *d_xyz*) -2) 50))
-			     :rpy #f(1.54 1.0 -1.54))
+			     :rpy #f(1.54 0.7 -1.54))
 		:rotation-axis :t)
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send target-obj :worldpos)
-				      (float-vector (+ -120 (/ (car *d_xyz*) -2)) 0 50))
-			     :rpy #f(0 1.0 -1.54))
+				      (float-vector (+ -100 (/ (car *d_xyz*) -2)) 0 50))
+			     :rpy #f(0 0.7 -1.54))
 		:rotation-axis :t))
       (publish-error "out of reach...")
       (return-from grasp-target-callback nil))
@@ -227,6 +247,7 @@
     (publish-grasp-state)
     (publish-info "reaching...")
     (send *pr2* *rarm* :move-end-pos #f(105 0 -70) :world)
+    ;;(send *pr2* *larm* :move-end-pos #f(105 0 -40) :world)
     (send *pr2* *larm* :move-end-pos #f(105 0 -40) :world)
     (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
     (send *ri* :wait-interpolation)
@@ -262,13 +283,39 @@
     (send *ri* :wait-interpolation)
     (publish-info "grasp succeeded!"))
     (end-collect)
-    
+    ;;(wait-for-box)
     (rotate-dish)
     (regrasp-larm)
-    (rotate-dish)
-    
+    ;;(regrasp-larm)
+    ;;(wait-for-box2)
+    ;;(wait-for-box)
     (send *ri* :stop-grasp *larm* :wait nil)
+   
     ;;(send *ri* :angle-vector-sequence)
+    ;;(setq *grasp-state* "placing")
+    ;;(publish-grasp-state)
+    ;;(publish-info "placing ...")
+    ;;(send *pr2* *rarm* :move-end-pos #f(0 0 -150) :world)
+    ;;(send *pr2* *larm* :move-end-pos #f(0 0 -150) :world)
+    ;;(send *ri* :wait-interpolation)
+    ;;(send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+    ;;(send *ri* :wait-interpolation)
+
+    ;;(setq *grasp-state* "grasp-opening")
+    ;;(publish-grasp-state)
+    ;;(send *ri* :stop-grasp *rarm* :wait nil)
+    ;;(send *ri* :stop-grasp *larm* :wait t)
+    ;;(publish-info "return object...")
+
+    ;;(setq *grasp-state* "leaving")
+    ;;(publish-grasp-state)
+    ;;(send *pr2* *rarm* *larm* :move-end-pos #f(-160 0 0) :world)
+    ;;(send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+    ;;(send *ri* :wait-interpolation)
+    ;;(publish-info "pre grasp pose")
+
+    ;;(setq *grasp-state* "returning")
+    ;;(publish-grasp-state)
     (pr2-pregrasp-pose)
     ;;(publish-info "click tabletop object!")
   )
@@ -278,11 +325,22 @@
                   jsk_recognition_msgs::BoundingBox #'grasp-target-callback)
   (publish-info "click tabletop object!"))
 
+(defun wait-for-box ()
+  (ros::subscribe *grasp-bbox*
+                  jsk_recognition_msgs::BoundingBoxArray #'rotate-dish)
+)
+
+(defun wait-for-box2 ()
+  (ros::subscribe *grasp-bbox*
+                  jsk_recognition_msgs::BoundingBoxArray #'regrasp-larm)
+)
+
 (defun publish-grasp-state ()
   (ros::publish "grasp_state" (instance std_msgs::String :init :data *grasp-state*))) ;change from "/grasp_state" to "grasp_state"
 
 (defun demo ()
   (setq *grasping-object-p* nil)
+  (setq *stop* nil)
   (setq *rarm* :rarm)
   (setq *larm* :larm)
   (setq *tfl* (instance ros::transform-listener :init))
