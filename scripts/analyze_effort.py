@@ -274,4 +274,4 @@ class AnalyzeEffort():
 
 
 if __name__ == "__main__":
-    mf _ain()
+    main()
