@@ -16,6 +16,10 @@
 
 (require :pr2-interface "package://pr2eus/pr2-interface.l")
 
+;; set arrow
+(require "package://euslisp/jskeus/eus/models/arrow-object.l")
+(setq *axis* (arrow))
+
 (defun pr2-pregrasp-pose ()
   (send *pr2* :angle-vector #f(299.712 26.8145 7.05076 49.0149 -70.8937 92.6094 -81.3427 -6.18613 -18.0939 18.0364 -20.0459 -84.4307 -131.577 -114.592 -21.328 -3 54.75))
   (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
@@ -116,11 +120,17 @@
   (setq req (instance std_srvs::TriggerRequest :init))
   (setq res (ros::service-call "/seq_data_collection/end_request" req))
   )
-(defun regrasp-model-larm ()
-    (send *ri* :stop-grasp *larm* :wait nil)
-    (send *ri* :start-grasp *rarm* :wait nil)
+
+(defun ready-to-regrasp ()
+    (send *ri* :start-grasp *rarm* :wait t)
     (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
     (send *ri* :wait-interpolation)
+    (send *ri* :stop-grasp *larm* :wait nil)
+    (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+    (send *ri* :wait-interpolation)
+  )
+
+(defun regrasp-model-larm ()
     ;;(unless box-msg
     ;; (publish-info "target point is nil")
     ;; (return-from regrasp-larm nil))
@@ -254,11 +264,16 @@
     (unix:sleep 3)
   )
 
-(defun rotate-dish-model ()
-    (send *ri* :move-gripper :rarm 0.02 :wait nil)
+(defun ready-to-rotate ()
     (send *ri* :start-grasp :larm)
     (send *ri* :angle-vector (send *pr2* :angle-vector) 1000)
     (send *ri* :wait-interpolation)
+    (send *ri* :move-gripper :rarm 0.02 :wait nil)
+    (send *ri* :angle-vector (send *pr2* :angle-vector) 1000)
+    (send *ri* :wait-interpolation)
+  )
+
+(defun rotate-dish-model ()
     ;;(unless msg
     ;; (publish-info "target point is nil")
     ;; (return-from rotate-dish nil))
@@ -346,7 +361,7 @@
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send hold-obj :worldpos)
 				      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
-			     :rpy (v+ (rpy-angle (send target-obj :worldrot)) #f(-0.77 0.6 -1.54)))
+			     :rpy (v+ (rpy-angle (send hold-obj :worldrot)) #f(-0.77 0.6 -1.54)))
 		:rotation-axis :t
         :revert-if-fail nil
         :stop 10
@@ -403,6 +418,90 @@
   (print source->target)
   )
 
+(defun correct-r-posture ()
+  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+                                    jsk_recognition_msgs::BoundingBoxArray 
+                                    :timeout 10000000000))
+  (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+
+  (setq r-end-coords (send *pr2* :rarm :end-coords))
+  (print r-end-coords)
+  (send r-end-coords :assoc hold-obj)
+  (print r-end-coords)
+  (setq *r-end-crd* (arrow))
+  (send *r-end-crd* :newcoords (send (send *pr2* :rarm :end-coords) :copy-worldcoords))
+  (setq *hold-obj* (arrow))
+  (send *hold-obj* :newcoords (send hold-obj :copy-worldcoords))
+  (setq coords (make-coords :pos (v+ (send hold-obj :worldpos)
+                                     (float-vector 0 0 0))
+                            ;;:rpy #f(1.54 0.6 -1.54)))
+                            :rpy #f(-1.54 0 -3.14)))
+  (setq *coords* (arrow))
+  (send *coords* :newcoords (send coords :copy-worldcoords))
+  (objects (list *pr2* *r-end-crd* *hold-obj* *coords*))
+  (send *pr2* :rarm :inverse-kinematics coords 
+        :move-target hold-obj 
+        :rotation-axis :z
+        :translation-axis t 
+        :debug-view nil
+        :revert-if-fail nil
+        :stop 50)
+  (setq *new-r-end-crd* (arrow))
+  (send *new-r-end-crd* :newcoords (send (send *pr2* :rarm :end-coords) :copy-worldcoords))
+  (objects (list *pr2* *new-r-end-crd* *r-end-crd* *hold-obj* *coords*))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
+  (send *ri* :wait-interpolation)
+  (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+                                    jsk_recognition_msgs::BoundingBoxArray 
+                                    :timeout 10000000000))
+  (setq new-hold-obj (bounding-box->cube (elt (send new-box-msg :boxes) 0)))
+  (setq *new-hold-obj* (arrow))
+  (send *new-hold-obj* :newcoords (send new-hold-obj :copy-worldcoords))
+  (objects (list *pr2* *new-hold-obj* *hold-obj* *coords*))
+
+)
+(defun correct-l-posture ()
+  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+                                    jsk_recognition_msgs::BoundingBoxArray 
+                                    :timeout 10000000000))
+  (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+
+  (setq l-end-coords (send *pr2* :larm :end-coords))
+  (print l-end-coords)
+  (send l-end-coords :assoc hold-obj)
+  (print l-end-coords)
+  (setq *l-end-crd* (arrow))
+  (send *l-end-crd* :newcoords (send (send *pr2* :larm :end-coords) :copy-worldcoords))
+  (setq *hold-obj* (arrow))
+  (send *hold-obj* :newcoords (send hold-obj :copy-worldcoords))
+  (setq coords (make-coords :pos (v+ (send hold-obj :worldpos)
+                                     (float-vector 0 0 0))
+                            ;;:rpy #f(1.54 0.6 -1.54)))
+                            :rpy #f(-1.54 0 -3.14)))
+  (setq *coords* (arrow))
+  (send *coords* :newcoords (send coords :copy-worldcoords))
+  (objects (list *pr2* *l-end-crd* *hold-obj* *coords*))
+  (send *pr2* :larm :inverse-kinematics coords 
+        :move-target hold-obj 
+        :rotation-axis :z
+        :translation-axis t 
+        :debug-view nil
+        :revert-if-fail nil
+        :stop 50)
+  (setq *new-l-end-crd* (arrow))
+  (send *new-l-end-crd* :newcoords (send (send *pr2* :larm :end-coords) :copy-worldcoords))
+  (objects (list *pr2* *new-l-end-crd* *l-end-crd* *hold-obj* *coords*))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
+  (send *ri* :wait-interpolation)
+  (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+                                    jsk_recognition_msgs::BoundingBoxArray 
+                                    :timeout 10000000000))
+  (setq new-hold-obj (bounding-box->cube (elt (send new-box-msg :boxes) 0)))
+  (setq *new-hold-obj* (arrow))
+  (send *new-hold-obj* :newcoords (send new-hold-obj :copy-worldcoords))
+  (objects (list *pr2* *new-hold-obj* *hold-obj* *coords*))
+)
+
 (defun grasp-target-callback (msg)
   (let ((target-obj (bounding-box->cube msg)))
     ;;(start-collect)
@@ -422,12 +521,13 @@
 	(progn
 	  (send *pr2* *rarm* :inverse-kinematics
 		(make-coords :pos (v+ (send target-obj :worldpos)
-				       (float-vector -110 (/ (car *d_xyz*) -2) 50))
-			     :rpy (v+ (elt (rpy-angle (send target-obj :worldrot)) 0) #f(1.54 0.7 -1.54)))
+				       (float-vector -110 (/ (car *d_xyz*) -2.4) 50))
+                     :rpy #f(1.54 0.7 -1.54))
+			     ;;:rpy (v+ (elt (rpy-angle (send target-obj :worldrot)) 0) #f(1.54 0.7 -1.54)))
 		:rotation-axis :t)
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send target-obj :worldpos)
-				      (float-vector (+ 0 (/ (car *d_xyz*) -2)) 0 50))
+				      (float-vector (- (/ (car *d_xyz*) -2.4) 100) 0 50))
 			     :rpy #f(0 0.7 -1.54))
 		:rotation-axis :t))
       (publish-error "out of reach...")
@@ -484,10 +584,19 @@
     (send *ri* :wait-interpolation)
     (publish-info "grasp succeeded!"))
     ;;(end-collect)
+    (ready-to-rotate)
+    (correct-l-posture)
     (rotate-dish-model)
+    (ready-to-regrasp)
+    (correct-r-posture)
     (regrasp-model-larm)
+    (ready-to-rotate)
+    (correct-l-posture)
     (rotate-dish-model)
+    (ready-to-regrasp)
+    (correct-r-posture)
     (regrasp-model-larm)
+    (correct-l-posture)
     (send *ri* :stop-grasp *larm* :wait nil)
     (send *ri* :stop-grasp *rarm* :wait nil)
    
