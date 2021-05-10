@@ -15,6 +15,7 @@
 
 (require :pr2-interface "package://pr2eus/pr2-interface.l")
 ;;(require "package://wash_dish/euslisp/kinematics.l")
+(load "package://wash_dish/euslisp/action.l")
 
 ;; set arrow
 (require "package://euslisp/jskeus/eus/models/arrow-object.l")
@@ -132,146 +133,146 @@
   )
 
 
-(defun rotate-dish (msg)
-    (send *ri* :move-gripper :rarm 0.02 :wait nil)
-    (print "rotate dish one-shot start")
-    (unless msg
-     (publish-info "target point is nil")
-     (return-from rotate-dish nil))
-    (unless (send msg :boxes)
-     (publish-info "target point is nil")
-     (return-from rotate-dish nil))
-
-    (setq *target-obj* (bounding-box->cube (elt (send msg :boxes) 0)))
-    (unless *target-obj*
-      (publish-info "target point is nil")
-      (return-from rotate-dish nil))
-    (unless *grasping-object-p*
-      (setq *grasping-object-p* t))
-    ;;(setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
-    ;;                                  jsk_recognition_msgs::BoundingBoxArray 
-    ;;                                  :timeout 1000000000))
-    ;;(setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
-    ;;                                  jsk_recognition_msgs::BoundingBoxArray 
-    ;;                                  :timeout 1000000000))
-    ;;(while (not *has-sub*)
-      (print "rotate dish one-shot end")
-      (setq hold-obj (bounding-box->cube (elt (send msg :boxes) 0)))
-      (unless
-	  (progn
-	    (send *pr2* *larm* :inverse-kinematics
-	  	(make-coords :pos (v+ (send hold-obj :worldpos)
-	  			      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
-	  		     :rpy #f(-0.77 1.0 -1.54))
-	  	:rotation-axis :t))
-        (publish-error "out of reach...")
-        (return-from grasp-target-callback nil))
-      (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
-      (send *ri* :wait-interpolation)
-      (unless
-	  (progn
-	    (send *pr2* *larm* :inverse-kinematics
-	  	(make-coords :pos (v+ (send hold-obj :worldpos)
-	  			      (float-vector 0 (/ (car *d_xyz*) 2) 0))
-	  		     :rpy #f(-1.54 1.0 -1.54))
-	  	:rotation-axis :t))
-        (publish-error "out of reach...")
-        (return-from grasp-target-callback nil))
-      (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
-      (send *ri* :wait-interpolation)
-      (send *ri* :start-grasp *rarm* :wait nil)
-      (send *ri* :wait-interpolation)
-      (unix:sleep 3)
-  )
-
-(defun feedback ()
-  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
-                                    jsk_recognition_msgs::BoundingBoxArray 
-                                    :timeout 10000000000))
-  (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
-  (setq tilt-vector (elt (rpy-angle (send hold-obj :worldrot)) 0))
-  (unless
-    (progn
-	  (send *pr2* *rarm* :inverse-kinematics
-		(make-coords :pos (v+ (send hold-obj :worldpos)
-				       (float-vector 0 (/ (car *d_xyz*) -2) 0))
-			     ;;:rpy #f(1.54 1.0 -1.54))
-			     ;;:rpy (float-vector 1.54 1.0 -1.54))
-                 ;;:rpy (float-vector 2.38079 0.045811 3.09867)) 
-			     :rpy (v- (float-vector 1.54 1.0 -1.54) (v- (float-vector (elt tilt-vector 0) (elt tilt-vector 1) (elt tilt-vector 2)) *rpy*)))
-		:rotation-axis :t
-        :revert-if-fail nil
-        :stop 10))
-    ;;(send *pr2* *rarm* :inverse-kinematics
-    ;;;;  (send hold-obj :copy-worldcoords)
-    ;;;;  :rotation-axis :z 
-    ;;;;  :debug-view nil 
-    ;;;;  :revert-if-fail nil
-    ;;;;  :stop 50))
-    ;;(setq tilt-vector (elt (rpy-angle (send hold-obj :worldrot)) 0))
-    ;;(print (v+ (float-vector (elt tilt-vector 0) (elt tilt-vector 1) (elt tilt-vector 2)) (float-vector 1.54 1.0 -1.54)))
-    ;;(print "----------------")
-  	;;(make-coords :pos (v+ (send hold-obj :worldpos)
-  	;;		      (float-vector 0 (/ (car *d_xyz*) -2) 0))
-    ;;             :rpy #f(1.54 1 -1.54))
-	;;		     ;;:rpy (v+ (float-vector (elt tilt-vector 0) (elt tilt-vector 1) (elt tilt-vector 2)) (float-vector 1.54 1.0 -1.54)))
-    ;;  :rotation-axis :t
-    ;;  :revert-if-fail nil
-    ;;  :stop 10
-    ;;  ;;:thre 5
-    ;;  ;;:rthre 1
-    ;;  ))
-    (publish-error "out of reach...")
-    (return-from feedback nil))
-  
-  
-  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
-  (send *ri* :wait-interpolation)
-  (unix:sleep 3)
-  )
-
-(defun make-end2obj ()
-  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
-                                    jsk_recognition_msgs::BoundingBoxArray 
-                                    :timeout 10000000000))
-  (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
-
-  (setq r-end-coords (send *pr2* :rarm :end-coords))
-  (print r-end-coords)
-  (send r-end-coords :assoc hold-obj)
-  (print r-end-coords)
-  (setq *r-end-crd* (arrow))
-  (send *r-end-crd* :newcoords (send (send *pr2* :rarm :end-coords) :copy-worldcoords))
-  (setq *hold-obj* (arrow))
-  (send *hold-obj* :newcoords (send hold-obj :copy-worldcoords))
-  (setq coords (make-coords :pos (v+ (send hold-obj :worldpos)
-                                     (float-vector 0 0 0))
-                            ;;:rpy #f(1.54 0.6 -1.54)))
-                            :rpy #f(-1.54 0 -3.14)))
-  (setq *coords* (arrow))
-  (send *coords* :newcoords (send coords :copy-worldcoords))
-  (objects (list *pr2* *r-end-crd* *hold-obj* *coords*))
-  (send *pr2* :rarm :inverse-kinematics coords 
-        :move-target hold-obj 
-        :rotation-axis :z
-        :translation-axis t 
-        :debug-view nil
-        :revert-if-fail nil
-        :stop 50)
-  (setq *new-r-end-crd* (arrow))
-  (send *new-r-end-crd* :newcoords (send (send *pr2* :rarm :end-coords) :copy-worldcoords))
-  (objects (list *pr2* *new-r-end-crd* *r-end-crd* *hold-obj* *coords*))
-  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
-  (send *ri* :wait-interpolation)
-  (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
-                                    jsk_recognition_msgs::BoundingBoxArray 
-                                    :timeout 10000000000))
-  (setq new-hold-obj (bounding-box->cube (elt (send new-box-msg :boxes) 0)))
-  (setq *new-hold-obj* (arrow))
-  (send *new-hold-obj* :newcoords (send new-hold-obj :copy-worldcoords))
-  (objects (list *pr2* *new-hold-obj* *hold-obj* *coords*))
-
-)
+;;(defun rotate-dish (msg)
+;;    (send *ri* :move-gripper :rarm 0.02 :wait nil)
+;;    (print "rotate dish one-shot start")
+;;    (unless msg
+;;     (publish-info "target point is nil")
+;;     (return-from rotate-dish nil))
+;;    (unless (send msg :boxes)
+;;     (publish-info "target point is nil")
+;;     (return-from rotate-dish nil))
+;;
+;;    (setq *target-obj* (bounding-box->cube (elt (send msg :boxes) 0)))
+;;    (unless *target-obj*
+;;      (publish-info "target point is nil")
+;;      (return-from rotate-dish nil))
+;;    (unless *grasping-object-p*
+;;      (setq *grasping-object-p* t))
+;;    ;;(setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
+;;    ;;                                  jsk_recognition_msgs::BoundingBoxArray 
+;;    ;;                                  :timeout 1000000000))
+;;    ;;(setq box-msg (one-shot-subscribe "/segmentation_decomposer/boxes" 
+;;    ;;                                  jsk_recognition_msgs::BoundingBoxArray 
+;;    ;;                                  :timeout 1000000000))
+;;    ;;(while (not *has-sub*)
+;;      (print "rotate dish one-shot end")
+;;      (setq hold-obj (bounding-box->cube (elt (send msg :boxes) 0)))
+;;      (unless
+;;	  (progn
+;;	    (send *pr2* *larm* :inverse-kinematics
+;;	  	(make-coords :pos (v+ (send hold-obj :worldpos)
+;;	  			      (float-vector (* (/ (car *d_xyz*) -2) 0.70710678118) (* (/ (car *d_xyz*) 2) 0.70710678118) 0))
+;;	  		     :rpy #f(-0.77 1.0 -1.54))
+;;	  	:rotation-axis :t))
+;;        (publish-error "out of reach...")
+;;        (return-from grasp-target-callback nil))
+;;      (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+;;      (send *ri* :wait-interpolation)
+;;      (unless
+;;	  (progn
+;;	    (send *pr2* *larm* :inverse-kinematics
+;;	  	(make-coords :pos (v+ (send hold-obj :worldpos)
+;;	  			      (float-vector 0 (/ (car *d_xyz*) 2) 0))
+;;	  		     :rpy #f(-1.54 1.0 -1.54))
+;;	  	:rotation-axis :t))
+;;        (publish-error "out of reach...")
+;;        (return-from grasp-target-callback nil))
+;;      (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+;;      (send *ri* :wait-interpolation)
+;;      (send *ri* :start-grasp *rarm* :wait nil)
+;;      (send *ri* :wait-interpolation)
+;;      (unix:sleep 3)
+;;  )
+;;
+;;(defun feedback ()
+;;  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+;;                                    jsk_recognition_msgs::BoundingBoxArray 
+;;                                    :timeout 10000000000))
+;;  (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+;;  (setq tilt-vector (elt (rpy-angle (send hold-obj :worldrot)) 0))
+;;  (unless
+;;    (progn
+;;	  (send *pr2* *rarm* :inverse-kinematics
+;;		(make-coords :pos (v+ (send hold-obj :worldpos)
+;;				       (float-vector 0 (/ (car *d_xyz*) -2) 0))
+;;			     ;;:rpy #f(1.54 1.0 -1.54))
+;;			     ;;:rpy (float-vector 1.54 1.0 -1.54))
+;;                 ;;:rpy (float-vector 2.38079 0.045811 3.09867)) 
+;;			     :rpy (v- (float-vector 1.54 1.0 -1.54) (v- (float-vector (elt tilt-vector 0) (elt tilt-vector 1) (elt tilt-vector 2)) *rpy*)))
+;;		:rotation-axis :t
+;;        :revert-if-fail nil
+;;        :stop 10))
+;;    ;;(send *pr2* *rarm* :inverse-kinematics
+;;    ;;;;  (send hold-obj :copy-worldcoords)
+;;    ;;;;  :rotation-axis :z 
+;;    ;;;;  :debug-view nil 
+;;    ;;;;  :revert-if-fail nil
+;;    ;;;;  :stop 50))
+;;    ;;(setq tilt-vector (elt (rpy-angle (send hold-obj :worldrot)) 0))
+;;    ;;(print (v+ (float-vector (elt tilt-vector 0) (elt tilt-vector 1) (elt tilt-vector 2)) (float-vector 1.54 1.0 -1.54)))
+;;    ;;(print "----------------")
+;;  	;;(make-coords :pos (v+ (send hold-obj :worldpos)
+;;  	;;		      (float-vector 0 (/ (car *d_xyz*) -2) 0))
+;;    ;;             :rpy #f(1.54 1 -1.54))
+;;	;;		     ;;:rpy (v+ (float-vector (elt tilt-vector 0) (elt tilt-vector 1) (elt tilt-vector 2)) (float-vector 1.54 1.0 -1.54)))
+;;    ;;  :rotation-axis :t
+;;    ;;  :revert-if-fail nil
+;;    ;;  :stop 10
+;;    ;;  ;;:thre 5
+;;    ;;  ;;:rthre 1
+;;    ;;  ))
+;;    (publish-error "out of reach...")
+;;    (return-from feedback nil))
+;;  
+;;  
+;;  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
+;;  (send *ri* :wait-interpolation)
+;;  (unix:sleep 3)
+;;  )
+;;
+;;(defun make-end2obj ()
+;;  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+;;                                    jsk_recognition_msgs::BoundingBoxArray 
+;;                                    :timeout 10000000000))
+;;  (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+;;
+;;  (setq r-end-coords (send *pr2* :rarm :end-coords))
+;;  (print r-end-coords)
+;;  (send r-end-coords :assoc hold-obj)
+;;  (print r-end-coords)
+;;  (setq *r-end-crd* (arrow))
+;;  (send *r-end-crd* :newcoords (send (send *pr2* :rarm :end-coords) :copy-worldcoords))
+;;  (setq *hold-obj* (arrow))
+;;  (send *hold-obj* :newcoords (send hold-obj :copy-worldcoords))
+;;  (setq coords (make-coords :pos (v+ (send hold-obj :worldpos)
+;;                                     (float-vector 0 0 0))
+;;                            ;;:rpy #f(1.54 0.6 -1.54)))
+;;                            :rpy #f(-1.54 0 -3.14)))
+;;  (setq *coords* (arrow))
+;;  (send *coords* :newcoords (send coords :copy-worldcoords))
+;;  (objects (list *pr2* *r-end-crd* *hold-obj* *coords*))
+;;  (send *pr2* :rarm :inverse-kinematics coords 
+;;        :move-target hold-obj 
+;;        :rotation-axis :z
+;;        :translation-axis t 
+;;        :debug-view nil
+;;        :revert-if-fail nil
+;;        :stop 50)
+;;  (setq *new-r-end-crd* (arrow))
+;;  (send *new-r-end-crd* :newcoords (send (send *pr2* :rarm :end-coords) :copy-worldcoords))
+;;  (objects (list *pr2* *new-r-end-crd* *r-end-crd* *hold-obj* *coords*))
+;;  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
+;;  (send *ri* :wait-interpolation)
+;;  (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+;;                                    jsk_recognition_msgs::BoundingBoxArray 
+;;                                    :timeout 10000000000))
+;;  (setq new-hold-obj (bounding-box->cube (elt (send new-box-msg :boxes) 0)))
+;;  (setq *new-hold-obj* (arrow))
+;;  (send *new-hold-obj* :newcoords (send new-hold-obj :copy-worldcoords))
+;;  (objects (list *pr2* *new-hold-obj* *hold-obj* *coords*))
+;;
+;;)
 
 (defun grasp-target-callback (msg)
   (let ((target-obj (bounding-box->cube msg)))
@@ -358,14 +359,14 @@
     (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
     (send *ri* :wait-interpolation)
     (publish-info "grasp succeeded!"))
-    
+    (l-rub)
     ;;(rotate-dish)
     ;;(feedback)
-    (make-end2obj)
-    (make-end2obj)
-    (send *ri* :stop-grasp *rarm* :wait nil)
+    ;;(make-end2obj)
+    ;;(make-end2obj)
+    ;;(send *ri* :stop-grasp *rarm* :wait nil)
     (pr2-pregrasp-pose)
-    ;;(publish-info "click tabletop object!")
+    (publish-info "click tabletop object!")
   )
 
 (defun wait-for-grasp-target ()
