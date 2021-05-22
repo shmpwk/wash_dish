@@ -43,7 +43,7 @@
   )
 
 (defun go-to-sink ()
-  (send *pr2* :move-to (send *room73b2* :spot "/eng2/7f/room73B2-sink-front0")  :world)
+  (send *pr2* :move-to (send *room73b2* :spot "/eng2/7f/room73B2-sink-front1")  :world)
   (send *pr2* :move-to (make-coords :pos #f(300 -150 0)))
   (send *ri* :angle-vector (send *pr2* :angle-vector) 4000)
   (send *ri* :wait-interpolation)
@@ -61,8 +61,14 @@
 (defun move-to-sink-ri ()
   ;;(send *ri* :move-to *sink-spot*)
   ;; (go-to-spot "/eng2/7f/room73B2-sink-front")
-  (send *ri* :move-to (send *scene* :spot "/eng2/7f/room73B2-sink-front0") :frame-id "world")
+  (send *ri* :move-to (send *scene* :spot "/eng2/7f/room73B2-sink-front1") :frame-id "world")
   )
+
+(defun move-a-little ()
+  ;; move forward 0.12 and move right -0.14
+  ;; but need to be adjust more
+  (send *ri* :go-pos-unsafe 0.12 -0.14 0)
+)
 
 ;;*irtviewer*上のロボットを拡大表示
 (defun view-adj ()
@@ -76,6 +82,7 @@
   (init)
   ;;(go-to-sink)
   (move-to-sink-ri)
+  (move-a-littele)
   (view-adj)
   )
 
