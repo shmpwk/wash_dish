@@ -51,7 +51,20 @@ def wrench_cb(msg):
     header = posestamped.header
     header.stamp = rospy.Time.now()
     header.frame_id = "l_gripper_tool_frame"
-    obj_wrench = tf_converter(posestamped)
+    obj_posestamped = tf_converter(posestamped)
+
+    r =tf.transformations.euler_from_quaternion((obj_posestamped.pose.orientation.x, obj_posestamped.pose.orientation.y, obj_posestamped.pose.orientation.z, obj_posestamped.pose.orientation.w))
+    obj_wrench = WrenchStamped()
+    obj_wrench.wrench.force.x = obj_posestamped.pose.position.x
+    obj_wrench.wrench.force.y = obj_posestamped.pose.position.y
+    obj_wrench.wrench.force.z = obj_posestamped.pose.position.z
+    obj_wrench.wrench.torque.x = r[0]
+    obj_wrench.wrench.torque.y = r[1]
+    obj_wrench.wrench.torque.z = r[2]
+    obj_wrench.header = obj_posestamped.header
+    obj_wrench.header.stamp = rospy.Time.now()
+    obj_wrench.header.frame_id = "base_link"
+
     pub.publish(obj_wrench)
 
     #xy = x_force**2 + y_force**2
@@ -68,10 +81,12 @@ def wrench_cb(msg):
     #    pub.publish(0)
     #    print("nothing")
  
+ 
 rospy.init_node('touch_detect')
 position_sub = rospy.Subscriber('/left_endeffector/wrench', WrenchStamped, wrench_cb)
 #pub = rospy.Publisher('r_contact', Bool, queue_size=1)
-pub = rospy.Publisher('object_force', PoseStamped, queue_size=1)
+#pub = rospy.Publisher('object_force', PoseStamped, queue_size=1)
+pub = rospy.Publisher('object_force', WrenchStamped, queue_size=1)
 
 rospy.spin()
        
