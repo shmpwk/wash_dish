@@ -25,7 +25,7 @@
   	(make-coords :pos (v+ (send *init-target-obj* :worldpos)
   			      (float-vector 0 (/ (car *init-d-xyz*) -2.5) 20))
   		     :rpy #f(-1.0 0.6 -1.54))
-  	:rotation-axis :t
+    :rotation-axis :t
       :revert-if-fail nil
       :stop 10
       ;;:thre 5
@@ -35,7 +35,7 @@
     (return-from rotate-dish nil))
   (send *ri* :angle-vector (send *pr2* :angle-vector) 1000)
   (send *ri* :wait-interpolation)
- )
+  )
 
 (defun ready-to-regrasp ()
     (send *ri* :start-grasp *rarm* :wait t)
@@ -55,9 +55,15 @@
     ;; (publish-info "target point is nil")
     ;; (return-from regrasp-larm nil))
 
-    (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+    (setq regrasp-larm nil)
+    (unless regrasp-larm
+      (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                       jsk_recognition_msgs::BoundingBoxArray 
                                       :timeout 10000000000))
+      (if box-msg
+        (print box-msg)
+        (setq regrasp-larm t))
+      )
     (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
     (unless
 	(progn
@@ -199,9 +205,14 @@
     ;; (publish-info "target point is nil")
     ;; (return-from rotate-dish nil))
 
-    (setq msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+    (setq rotate-dish nil)
+    (unless rotate-dish
+      (setq msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                       jsk_recognition_msgs::BoundingBoxArray 
                                       :timeout 1000000000))
+      (if msg 
+        (setq rotate-dish t)))
+
     (print "rotate dish one-shot end")
     (setq hold-obj (bounding-box->cube (elt (send msg :boxes) 0)))
 
@@ -326,9 +337,13 @@
     (print "finish rotating")
   )
 (defun correct-r-posture ()
-  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+  (setq correct nil)
+    (unless correct
+      (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                     jsk_recognition_msgs::BoundingBoxArray 
                                     :timeout 10000000000))
+      (if box-msg
+        (setq correct t)))
   (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
 
   (setq r-end-coords (send *pr2* :rarm :end-coords))
@@ -358,9 +373,13 @@
   (objects (list *pr2* *new-r-end-crd* *r-end-crd* *hold-obj* *coords*))
   (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
   (send *ri* :wait-interpolation)
-  (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+  (setq new nil)
+  (unless new
+    (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                     jsk_recognition_msgs::BoundingBoxArray 
                                     :timeout 10000000000))
+    (if new-box-msg
+      (setq new t)))
   (setq new-hold-obj (bounding-box->cube (elt (send new-box-msg :boxes) 0)))
   (setq *new-hold-obj* (arrow))
   (send *new-hold-obj* :newcoords (send new-hold-obj :copy-worldcoords))
@@ -368,9 +387,13 @@
 
 )
 (defun correct-l-posture ()
-  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+  (setq correct nil)
+    (unless correct
+      (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                     jsk_recognition_msgs::BoundingBoxArray 
                                     :timeout 10000000000))
+      (if box-msg
+        (setq correct t)))
   (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
 
   (setq l-end-coords (send *pr2* :larm :end-coords))
@@ -400,9 +423,14 @@
   (objects (list *pr2* *new-l-end-crd* *l-end-crd* *hold-obj* *coords*))
   (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
   (send *ri* :wait-interpolation)
-  (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+  (setq new nil)
+  (unless new
+    (setq new-box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                     jsk_recognition_msgs::BoundingBoxArray 
                                     :timeout 10000000000))
+    (if new-box-msg
+      (setq new t)
+      (print "aaaa")))
   (setq new-hold-obj (bounding-box->cube (elt (send new-box-msg :boxes) 0)))
   (setq *new-hold-obj* (arrow))
   (send *new-hold-obj* :newcoords (send new-hold-obj :copy-worldcoords))
