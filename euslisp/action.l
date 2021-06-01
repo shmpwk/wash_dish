@@ -1,41 +1,175 @@
 (defun l-rub ()
+  (send *ri* :start-grasp *larm* :wait nil)
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+  (send *ri* :wait-interpolation)
   (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
                                     jsk_recognition_msgs::BoundingBoxArray 
                                     :timeout 10000000000))
+  
   (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
   (unless
-  (progn
     (send *pr2* *larm* :inverse-kinematics
-  	(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-  			      (float-vector 0 (/ (car *init-d-xyz*) 2.5) 20))
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 50 (- (/ (car *init-d-xyz*) 2.5) -50) 70))
   		     :rpy #f(-1.0 0.6 -1.54))
   	:rotation-axis :t
       :revert-if-fail nil
       :stop 10
       ;;:thre 5
       ;;:rthre 1
-      ))
+      )
     (publish-error "out of reach...")
     (return-from rotate-dish nil))
-  (send *ri* :angle-vector (send *pr2* :angle-vector) 1000)
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
   (send *ri* :wait-interpolation)
   (unless
-  (progn
     (send *pr2* *larm* :inverse-kinematics
-  	(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-  			      (float-vector 0 (/ (car *init-d-xyz*) -2.5) 20))
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 50 (- (/ (car *init-d-xyz*) -2.5) -50) 50))
   		     :rpy #f(-1.0 0.6 -1.54))
     :rotation-axis :t
       :revert-if-fail nil
       :stop 10
       ;;:thre 5
       ;;:rthre 1
-      ))
+      )
     (publish-error "out of reach...")
     (return-from rotate-dish nil))
-  (send *ri* :angle-vector (send *pr2* :angle-vector) 1000)
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
   (send *ri* :wait-interpolation)
-  )
+  (unless
+    (send *pr2* *larm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 100 (- (/ (car *init-d-xyz*) 2.5) -50) 50))
+  		     :rpy #f(-1.0 0.6 -1.54))
+  	:rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+  (send *ri* :wait-interpolation)
+  (unless
+    (send *pr2* *larm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 100 (- (/ (car *init-d-xyz*) -2.5) -50) 50))
+  		     :rpy #f(-1.0 0.6 -1.54))
+  	:rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+  (send *ri* :wait-interpolation)
+  (unless
+    (send *pr2* *larm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 150 (- (/ (car *init-d-xyz*) 2.5) -50) 50))
+  		     :rpy #f(-1.0 0.6 -1.54))
+  	:rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+  (send *ri* :wait-interpolation)
+  (unless
+    (send *pr2* *larm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 150 (- (/ (car *init-d-xyz*) -2.5) -50) 50))
+  		     :rpy #f(-1.0 0.6 -1.54))
+  	:rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+  (send *ri* :wait-interpolation)
+
+)
+
+(defun r-rub ()
+  (send *ri* :stop-grasp *larm* :wait nil)
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 2000)
+  (send *ri* :wait-interpolation)
+  (setq box-msg (one-shot-subscribe "/segmentation_decomposer_ssd/boxes" 
+                                    jsk_recognition_msgs::BoundingBoxArray 
+                                    :timeout 10000000000))
+  
+  (setq hold-obj (bounding-box->cube (elt (send box-msg :boxes) 0)))
+  (unless
+    (send *pr2* *rarm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 50 (/ (car *init-d-xyz*) 2.5) 60))
+  		     :rpy #f(-1.0 0.6 -1.54))
+  	:rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
+  (send *ri* :wait-interpolation)
+  (unless
+    (send *pr2* *larm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 50 (/ (car *init-d-xyz*) -2.5) 50))
+  		     :rpy #f(-1.0 0.6 -1.54))
+    :rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+  (send *ri* :wait-interpolation)
+  (unless
+    (send *pr2* *larm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 50 (/ (car *init-d-xyz*) 2.5) 50))
+  		     :rpy #f(-1.0 0.6 -1.54))
+  	:rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+  (unless
+    (send *pr2* *rarm* :inverse-kinematics
+  	(make-coords :pos (v+ (send hold-obj :worldpos)
+  			      (float-vector 50 (/ (car *init-d-xyz*) -2.5) 60))
+  		     :rpy #f(-1.0 0.6 -1.54))
+  	:rotation-axis :t
+      :revert-if-fail nil
+      :stop 10
+      ;;:thre 5
+      ;;:rthre 1
+      )
+    (publish-error "out of reach...")
+    (return-from rotate-dish nil))
+  (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
+  (send *ri* :wait-interpolation)
+ (send *ri* :wait-interpolation)
+ )
 
 (defun ready-to-regrasp ()
     (send *ri* :start-grasp *rarm* :wait t)
@@ -69,7 +203,7 @@
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-				      (float-vector (* (/ (car *init-d-xyz*) -2.5) 0.38268343236508984) (* (/ (car *init-d-xyz*) 2.5) 0.9238795325112867) 150))
+				      (float-vector (+ (* (/ (car *init-d-xyz*) -2.5) 0.38268343236508984) 100)  (* (/ (car *init-d-xyz*) 2.5) 0.9238795325112867) 150))
 			     :rpy #f(-1.0 0.6 -1.54))
 		:rotation-axis :t
         :revert-if-fail nil
@@ -85,7 +219,7 @@
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-				      (float-vector (* (/ (car *init-d-xyz*) -2.5) 0.70710678118) (* (/ (car *init-d-xyz*) 2.5) 0.70710678118) 150))
+				      (float-vector (+ (* (/ (car *init-d-xyz*) -2.5) 0.70710678118) 100) (* (/ (car *init-d-xyz*) 2.5) 0.70710678118) 150))
 			     :rpy #f(-0.77 0.6 -1.54))
 		:rotation-axis :t
         :revert-if-fail nil
@@ -101,7 +235,7 @@
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-				      (float-vector (+ 0 (/ (car *init-d-xyz*) -2.8)) 0 150))
+				      (float-vector (+ 150 (/ (car *init-d-xyz*) -2.8)) 0 150))
 			     :rpy #f(0.0 0.6 -1.54))
 		:rotation-axis :t
         :revert-if-fail nil
@@ -191,7 +325,8 @@
     (send *ri* :start-grasp :larm)
     (send *ri* :angle-vector (send *pr2* :angle-vector) 1000)
     (send *ri* :wait-interpolation)
-    (send *ri* :move-gripper :rarm 0.01 :wait nil)
+    ;;(send *ri* :move-gripper :rarm 0.007 :wait nil)
+    (send *ri* :stop-grasp :rarm)
     (send *ri* :angle-vector (send *pr2* :angle-vector) 1000)
     (send *ri* :wait-interpolation)
     (print "ready to rotate")
@@ -220,7 +355,7 @@
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-				      (float-vector (* (/ (car *init-d-xyz*) -2.5) 0.70710678118) (* (/ (car *init-d-xyz*) 2.5) 0.70710678118) 150))
+				      (float-vector (+  (* (/ (car *init-d-xyz*) -2.5) 0.70710678118) 100) (* (/ (car *init-d-xyz*) 2.5) 0.70710678118) 150))
 			     :rpy #f(-0.77 0.6 -1.54))
 		:rotation-axis :t
         :revert-if-fail nil
@@ -236,7 +371,7 @@
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-				      (float-vector (* (/ (car *init-d-xyz*) -2.5) 0.38268343236508984) (* (/ (car *init-d-xyz*) 2.5) 0.9238795325112867) 150))
+				      (float-vector (+ (* (/ (car *init-d-xyz*) -2.5) 0.38268343236508984) 100) (* (/ (car *init-d-xyz*) 2.5) 0.9238795325112867) 150))
 			     :rpy #f(-1.0 0.6 -1.54))
 		:rotation-axis :t
         :revert-if-fail nil
@@ -252,7 +387,7 @@
 	(progn
 	  (send *pr2* *larm* :inverse-kinematics
 		(make-coords :pos (v+ (send *init-target-obj* :worldpos)
-				      (float-vector 0 (/ (car *init-d-xyz*) 2.5) 150))
+				      (float-vector 100 (/ (car *init-d-xyz*) 2.5) 150))
 			     :rpy #f(-1.54 0.5 -1.54))
 		:rotation-axis :t
         :revert-if-fail nil
