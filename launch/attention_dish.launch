@@ -1,0 +1,49 @@
+<launch>
+  <arg name="gui" default="true"/>
+  <arg name="use_sim" default="false"/>
+  <arg unless="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/kinect_head/rgb/camera_info"/>
+  <arg if="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/head_mount_kinect/rgb/camera_info"/>
+  <!--arg name="RGB_CAMERA_INFO" value="/head_mount_kinect/rgb/camera_info"/-->
+  
+  <arg unless="$(arg use_sim)" name="DEPTH_CAMERA_INFO" value="/kinect_head/depth/camera_info"/>
+  <arg if="$(arg use_sim)" name="DEPTH_CAMERA_INFO" value="/head_mount_kinect/depth/camera_info"/>
+  
+  <arg unless="$(arg use_sim)" name="DEPTH_TOPIC" value="/kinect_head/depth_registered/image_rect"/>
+  <arg if="$(arg use_sim)" name="DEPTH_TOPIC" value="/head_mount_kinect/depth/image_raw"/>
+
+  <arg unless="$(arg use_sim)" name="RGB_IMAGE" value="/kinect_head_remote/rgb/image_rect_color"/>
+  <arg if="$(arg use_sim)" name="RGB_IMAGE" value="/head_mount_kinect/rgb/image_raw"/>
+
+  <node name="attention_manager"
+        pkg="nodelet" type="nodelet"
+        args="manager"/>
+  
+  <node name="dish_attention_clipper"
+        pkg="nodelet" type="nodelet"
+        args="standalone jsk_pcl/AttentionClipper">
+        <remap from="~input" to="/kinect_head/rgb/camera_info" />
+        <remap from="~input/points" to="/plane_extraction_ssd/output" />
+        <!--remap from="~input/points" to="/extract_indices/output" /-->
+        <!--remap from="~input/box" to="/segmentation_decomposer_ssd/boxes/boxes[0]" /-->
+        <remap from="~input/box_array" to="/segmentation_decomposer_ssd/boxes" />
+  </node>
+
+  <include file="$(find wash_dish)/launch/virtual_camera_mono.launch" >
+      <arg name="RGB_IMAGE" value="$(arg RGB_IMAGE)" />
+      <arg name="RGB_CAMERA_INFO" value="$(arg RGB_CAMERA_INFO)" />
+      <arg name="CLOUD" value="/robot_self_filtered_points" />
+  </include>
+
+  <group if="$(arg gui)">
+    <node name="normal_concatenater"
+          pkg="nodelet" type="nodelet"
+          args="load jsk_pcl_utils/NormalConcatenater sample_manager">
+          <remap from="~input" to="/depth_image_creator/output_cloud"/>
+      <remap from="~normal" to="organized_edge_detector/output_normal"/>
+    </node>
+
+    <node name="rviz"
+          pkg="rviz" type="rviz"
+          args="-d $(find jsk_2020_4_carry_dish)/config/organized_edge_detector.rviz"/>
+  </group>
+</launch>
