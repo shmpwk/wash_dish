@@ -1,0 +1,48 @@
+<launch>
+  <arg name="gui" default="true"/>
+  <arg name="use_sim" default="false"/> 
+  <arg unless="$(arg use_sim)" name="DEPTH_POINTS" value="/robot_self_filtered_points"/>
+  <arg if="$(arg use_sim)" name="DEPTH_POINTS" value="/head_mount_kinect/depth_registered/points"/>
+
+  <node name="heightmap_manager"
+        pkg="nodelet" type="nodelet"
+        args="manager"/>
+
+  <node name="heightmap_converter"
+        pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/HeightmapConverter heightmap_manager">
+    <!--remap from="~input" to="$(arg DEPTH_POINTS)"/-->
+    <remap from="~input" to="/robot_self_filtered_points"/>
+    <rosparam>
+      use_projected_center: false
+      fixed_frame_id: base_footprint
+      center_frame_id: segmentation_decomposer_ssdoutput00
+      projected_center_frame_id: heightmap_center
+      resolution_x: 128
+      resolution_y: 128
+      min_x: -0.15
+      max_x: 0.15
+      min_y: -0.15
+      max_y: 0.15
+    </rosparam>
+  </node>
+
+  <node name="colorize_depth"
+      pkg="jsk_2020_4_carry_dish" type="image.py">
+  </node>    
+  
+  <group if="$(arg gui)">
+    <node name="colorize_float_image"
+          pkg="nodelet" type="nodelet"
+          args="load jsk_perception/ColorizeFloatImage heightmap_manager">
+      <remap from="~input" to="heightmap_converter/output"/>
+      <rosparam>
+        channel: 0
+      </rosparam>
+    </node>
+
+    <node name="rviz"
+          pkg="rviz" type="rviz"
+          args="-d $(find jsk_pcl_ros)/sample/rviz/heightmap_converter.rviz"/>
+  </group>
+</launch>
