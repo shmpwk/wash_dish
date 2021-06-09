@@ -1,5 +1,5 @@
 <launch>
-  <arg name="gui" default="true"/>
+  <arg name="gui" default="false"/>
   <arg name="use_sim" default="false"/>
   <arg unless="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/kinect_head/rgb/camera_info"/>
   <arg if="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/head_mount_kinect/rgb/camera_info"/>
@@ -32,6 +32,11 @@
       <arg name="RGB_IMAGE" value="$(arg RGB_IMAGE)" />
       <arg name="RGB_CAMERA_INFO" value="$(arg RGB_CAMERA_INFO)" />
       <arg name="CLOUD" value="/robot_self_filtered_points" />
+  </include>
+
+  <include file="$(find wash_dish)/launch/heightmap_morphological_filtering.launch">
+      <arg name="gui" value="true"/>
+      <arg name="use_sim" default="$(arg use_sim)"/>
   </include>
 
   <group if="$(arg gui)">
