@@ -20,10 +20,10 @@
       projected_center_frame_id: heightmap_center
       resolution_x: 128
       resolution_y: 128
-      min_x: -0.15
-      max_x: 0.15
-      min_y: -0.15
-      max_y: 0.15
+      min_x: -0.25
+      max_x: 0.25
+      min_y: -0.25
+      max_y: 0.25
     </rosparam>
   </node>
 
