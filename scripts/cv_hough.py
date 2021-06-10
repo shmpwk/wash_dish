@@ -49,7 +49,8 @@ def image_cb(msg):
 
 rospy.init_node('touch_detect')
 #position_sub = rospy.Subscriber('/kinect_head/rgb/image_rect_color', Image, image_cb)
-position_sub = rospy.Subscriber('/colorize_float_image_filtered_heightmap/output', Image, image_cb)
+#position_sub = rospy.Subscriber('/colorize_float_image_filtered_heightmap/output', Image, image_cb)
+position_sub = rospy.Subscriber('/colorize_float_image_heightmap/output', Image, image_cb)
 pub = rospy.Publisher('hough_image', Image, queue_size=1)
 
 rospy.spin()
