@@ -17,7 +17,6 @@ def image_cb(msg):
     # gray
     #gray1 = cv2.bitwise_and(img[:,:,0], img[:,:,1])
     #gray1 = cv2.bitwise_and(gray1, img[:,:,2])
-    #print(gray1)
     #gray1 = 0.299 * img[:, :, 0] + 0.587 * img[:, :, 1] + 0.114 * img[:, :, 2]
     #gray1 = np.array(gray1, dtype='int')
     gray1 = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -51,8 +50,6 @@ def image_cb(msg):
 rospy.init_node('touch_detect')
 #position_sub = rospy.Subscriber('/kinect_head/rgb/image_rect_color', Image, image_cb)
 position_sub = rospy.Subscriber('/colorize_float_image_filtered_heightmap/output', Image, image_cb)
-#pub = rospy.Publisher('r_contact', Bool, queue_size=1)
-#pub = rospy.Publisher('object_force', PoseStamped, queue_size=1)
 pub = rospy.Publisher('hough_image', Image, queue_size=1)
 
 rospy.spin()
