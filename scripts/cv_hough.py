@@ -31,15 +31,17 @@ def image_cb(msg):
     # get edge
     image,contours,hierarchy =  cv2.findContours(binimg,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
     rect_msg = RectArray(header=msg.header)
+
+    pub_flag = False
     for i, cnt in enumerate(contours):
         # fitting ellipse
         if len(cnt) >= 5:
             ellipse = cv2.fitEllipse(cnt)
             wx = int(ellipse[1][0])
             wy = int(ellipse[1][1])
-            pub_flag = 120 > wx > 80 and 120 > wy > 80
-            if (pub_flag):   
+            if (120 > wx > 80 and 120 > wy > 80):   
                 print(ellipse)
+                pub_flag = True
 
                 cx = int(ellipse[0][0])
                 cy = int(ellipse[0][1])
@@ -53,15 +55,15 @@ def image_cb(msg):
    
     if pub_flag:
         pub_rect.publish(rect_msg)           
-    cv2.imshow('resimg',resimg)
-    cv2.waitKey()
+    #cv2.imshow('resimg',resimg)
+    #cv2.waitKey()
 
 rospy.init_node('touch_detect')
 #position_sub = rospy.Subscriber('/extracted_depth_image_creator/output_image', Image, image_cb)
 #position_sub = rospy.Subscriber('/colorize_float_image_filtered_heightmap/output', Image, image_cb)
 position_sub = rospy.Subscriber('/colorize_float_image_heightmap/output', Image, image_cb)
-pub_rect = rospy.Publisher('hough_array', RectArray, queue_size=1)
-pub = rospy.Publisher('hough_image', Image, queue_size=1)
+pub_rect = rospy.Publisher('hough_rect', RectArray, queue_size=1)
+#pub = rospy.Publisher('hough_image', Image, queue_size=1)
 
 rospy.spin()
  
