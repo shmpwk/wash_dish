@@ -1,7 +1,8 @@
 <launch>
   <arg name="gui" default="true"/>
   <arg name="use_sim" default="false"/> 
-  <arg unless="$(arg use_sim)" name="DEPTH_POINTS" value="/robot_self_filtered_points"/>
+  <!--arg unless="$(arg use_sim)" name="DEPTH_POINTS" value="/robot_self_filtered_points"/-->
+  <arg unless="$(arg use_sim)" name="DEPTH_POINTS" value="/extracted_depth_image_creator/output_cloud"/>
   <arg if="$(arg use_sim)" name="DEPTH_POINTS" value="/head_mount_kinect/depth_registered/points"/>
 
   <node name="heightmap_manager"
@@ -14,16 +15,16 @@
     <!--remap from="~input" to="$(arg DEPTH_POINTS)"/-->
     <remap from="~input" to="/robot_self_filtered_points"/>
     <rosparam>
-      use_projected_center: false
+      use_projected_center: true
       fixed_frame_id: base_footprint
       center_frame_id: segmentation_decomposer_ssdoutput00
       projected_center_frame_id: heightmap_center
       resolution_x: 128
       resolution_y: 128
-      min_x: -0.25
-      max_x: 0.25
-      min_y: -0.25
-      max_y: 0.25
+      min_x: -0.18
+      max_x: 0.18
+      min_y: -0.18
+      max_y: 0.18
     </rosparam>
   </node>
 

@@ -30,27 +30,37 @@ def image_cb(msg):
     resimg = cv2.merge((bimg,bimg,bimg)) 
     # get edge
     image,contours,hierarchy =  cv2.findContours(binimg,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    rect_msg = RectArray(header=msg.header)
     for i, cnt in enumerate(contours):
         # fitting ellipse
         if len(cnt) >= 5:
             ellipse = cv2.fitEllipse(cnt)
-            print(ellipse)
+            wx = int(ellipse[1][0])
+            wy = int(ellipse[1][1])
+            pub_flag = 120 > wx > 80 and 120 > wy > 80
+            if (pub_flag):   
+                print(ellipse)
 
-            cx = int(ellipse[0][0])
-            cy = int(ellipse[0][1])
+                cx = int(ellipse[0][0])
+                cy = int(ellipse[0][1])
+                rect = Rect(x=cx, y=cy, width=wx, height=wy)
+                rect_msg.rects.append(rect)
 
-            # write ellipse
-            resimg = cv2.ellipse(resimg,ellipse,(255,0,0),2)
-            cv2.drawMarker(resimg, (cx,cy), (0,0,255), markerType=cv2.MARKER_CROSS, markerSize=10, thickness=1)
-            cv2.putText(resimg, str(i+1), (cx+3,cy+3), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,80,255), 1,cv2.LINE_AA)
-
+                # write ellipse
+                resimg = cv2.ellipse(resimg,ellipse,(255,0,0),2)
+                cv2.drawMarker(resimg, (cx,cy), (0,0,255), markerType=cv2.MARKER_CROSS, markerSize=10, thickness=1)
+                cv2.putText(resimg, str(i+1), (cx+3,cy+3), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,80,255), 1,cv2.LINE_AA)
+   
+    if pub_flag:
+        pub_rect.publish(rect_msg)           
     cv2.imshow('resimg',resimg)
     cv2.waitKey()
 
 rospy.init_node('touch_detect')
-#position_sub = rospy.Subscriber('/kinect_head/rgb/image_rect_color', Image, image_cb)
+#position_sub = rospy.Subscriber('/extracted_depth_image_creator/output_image', Image, image_cb)
 #position_sub = rospy.Subscriber('/colorize_float_image_filtered_heightmap/output', Image, image_cb)
 position_sub = rospy.Subscriber('/colorize_float_image_heightmap/output', Image, image_cb)
+pub_rect = rospy.Publisher('hough_array', RectArray, queue_size=1)
 pub = rospy.Publisher('hough_image', Image, queue_size=1)
 
 rospy.spin()
