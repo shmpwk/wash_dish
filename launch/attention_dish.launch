@@ -1,9 +1,14 @@
 <launch>
   <arg name="gui" default="false"/>
+  <arg name="machine" default="localhost" />
   <arg name="use_sim" default="false"/>
+  <arg name="publish_tf" default="true" />
+  <arg name="manager" default="attention_manager" />
   <arg unless="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/kinect_head/rgb/camera_info"/>
   <arg if="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/head_mount_kinect/rgb/camera_info"/>
   <!--arg name="RGB_CAMERA_INFO" value="/head_mount_kinect/rgb/camera_info"/-->
+
+  <machine name="localhost" address="localhost" />
   
   <arg unless="$(arg use_sim)" name="DEPTH_CAMERA_INFO" value="/kinect_head/depth/camera_info"/>
   <arg if="$(arg use_sim)" name="DEPTH_CAMERA_INFO" value="/head_mount_kinect/depth/camera_info"/>
@@ -39,10 +44,51 @@
       <arg name="use_sim" default="$(arg use_sim)"/>
   </include>
 
+  <node name="rects_to_cpi_hough"
+        pkg="jsk_recognition_utils" type="rect_array_to_cluster_point_indices.py"
+        output="screen" >
+    <remap from="~input" to="/hough_rect"/>
+    <!--remap from="~input/info" to="$(arg RGB_CAMERA_INFO)"/-->
+    <rosparam>
+      approximate_sync: true
+      use_info: false
+      img_width: 128
+      img_height: 128
+    </rosparam>
+  </node>
+  <node name="throttle_segmentation_hough" pkg="nodelet" type="nodelet"
+        args="load jsk_topic_tools/LightweightThrottle $(arg manager)"
+        output="screen"
+        machine="$(arg machine)">
+    <remap from="~input" to="rects_to_cpi_hough/output" />
+    <remap from="~output" to="rects_to_cpi_hough/output_throttle" />
+  </node>
+ <node name="segmentation_decomposer_hough" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/ClusterPointIndicesDecomposer $(arg manager)"
+        output="screen" 
+        machine="$(arg machine)">
+        <remap from="~input" to="/plane_extraction_ssd/output" />
+        <remap from="~target" to="/rects_to_cpi_hough/output" />
+        <remap from="~align_planes" to="/multi_plane_estimate_ssd/output_refined_polygon" />
+        <remap from="~align_planes_coefficients"
+           to="/multi_plane_estimate_ssd/output_refined_coefficients" />
+    <rosparam subst_value="true">
+      approximate_sync: true  
+      align_boxes: false
+      align_boxes_with_plane: false
+      target_frame_id: base_footprint
+      queue_size: 100000
+      publish_clouds: false
+      publish_tf: $(arg publish_tf)
+      sort_by: -cloud_size 
+      use_pca: true
+    </rosparam>
+  </node>
+
   <group if="$(arg gui)">
     <node name="normal_concatenater"
           pkg="nodelet" type="nodelet"
-          args="load jsk_pcl_utils/NormalConcatenater sample_manager">
+          args="load jsk_pcl_utils/NormalConcatenater manager">
           <remap from="~input" to="/depth_image_creator/output_cloud"/>
       <remap from="~normal" to="organized_edge_detector/output_normal"/>
     </node>
