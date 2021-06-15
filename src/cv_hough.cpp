@@ -15,6 +15,7 @@ class ImageConverter
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
+  ros::Publisher pub_;
 
 public:
   ImageConverter()
@@ -23,7 +24,7 @@ public:
     // Subscrive to input video feed and publish output video feed
     image_sub_ = it_.subscribe("/colorize_float_image_heightmap/output", 1,
       &ImageConverter::imageCb, this);
-    image_pub_ = it_.advertise("/hough_rect", 1);
+    pub_ = nh_.advertise<jsk_recognition_msgs::RectArray>("/hough_rect", 1);
 
     cv::namedWindow(OPENCV_WINDOW);
   }
@@ -50,6 +51,8 @@ public:
       cv::threshold(gray_img, bin_img, 0, 255, cv::THRESH_BINARY|cv::THRESH_OTSU);
       // get edge
       cv::findContours(bin_img, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+      jsk_recognition_msgs::RectArray rect_msg;
+      rect_msg.header = msg->header;
       
       for(int i = 0; i < contours.size(); ++i) {
         size_t count = contours[i].size();
@@ -64,6 +67,12 @@ public:
         // draw ellipse
         cv::ellipse(src_img, box, cv::Scalar(0,0,0), 2, CV_AA);
         cv::drawMarker(src_img, box.center, cv::Scalar(0,0,0));
+        jsk_recognition_msgs::Rect rect;
+        rect.x = box.center.x;
+        rect.y = box.center.y;
+        rect.width = box.size.width;
+        rect.height = box.size.height;
+        rect_msg.rects.push_back(rect);
       }
 
       cv::namedWindow("fit ellipse", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
@@ -71,6 +80,8 @@ public:
       cv::imshow("fit ellipse", src_img);
       cv::imshow("bin image", bin_img);
       cv::waitKey(0);
+      // Output 
+      pub_.publish(rect_msg);
     }
     catch (cv_bridge::Exception& e)
     {
@@ -86,8 +97,6 @@ public:
     //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
     //cv::waitKey(3);
 
-    // Output modified video stream
-    image_pub_.publish(cv_ptr->toImageMsg());
   }
 };
 
