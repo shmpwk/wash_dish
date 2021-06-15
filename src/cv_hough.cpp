@@ -62,7 +62,8 @@ public:
 
         if (box.size.width < 80 || box.size.height < 80) continue; //remove too small or big edge
         // draw ellipse
-        cv::ellipse(src_img, box, cv::Scalar(0,0,255), 2, CV_AA);
+        cv::ellipse(src_img, box, cv::Scalar(0,0,0), 2, CV_AA);
+        cv::drawMarker(src_img, box.center, cv::Scalar(0,0,0));
       }
 
       cv::namedWindow("fit ellipse", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
