@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   jsk_recognition_msgs
   image_transport
+  tf
 )
 find_package(OpenCV REQUIRED)
 ## System dependencies are found with CMake's conventions
