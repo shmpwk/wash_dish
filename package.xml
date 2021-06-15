@@ -39,6 +39,7 @@
   <depend>image_transport</depend>
   <depend>jsk_recognition_msgs</depend>
   <depend>tf</depend>
+  <depend>pcl_ros</depend>
   
   <!--   Note that this is equivalent to the following: -->
   <!--   <build_depend>roscpp</build_depend> -->

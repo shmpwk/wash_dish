@@ -16,7 +16,7 @@ int main(int argc, char** argv){
   ros::NodeHandle nh;
   ros::Rate loop_rate(10);
   ros::Subscriber sub = nh.subscribe("/plane_extraction_ssd/output", 1, pc_callback);
-  ros::Publisher pub = nh.advertise("/hough_pointcloud", 1);
+  ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("/hough_pointcloud", 1);
 
   tf::TransformListener listener;
   // wait until getting tf 

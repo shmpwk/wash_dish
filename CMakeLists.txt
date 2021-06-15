@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   jsk_recognition_msgs
   image_transport
   tf
+  pcl_ros
 )
 find_package(OpenCV REQUIRED)
 ## System dependencies are found with CMake's conventions
@@ -142,6 +143,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/wash_dish_node.cpp)
 add_executable(cv_hough src/cv_hough.cpp)
+add_executable(transform src/transform.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -154,9 +156,12 @@ add_executable(cv_hough src/cv_hough.cpp)
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
-target_link_libraries(cv_hough
+target_link_libraries(cv_hough 
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
+)
+target_link_libraries(transform 
+   ${catkin_LIBRARIES}
 )
 
 #############
