@@ -75,11 +75,11 @@ public:
         rect_msg.rects.push_back(rect);
       }
 
-      cv::namedWindow("fit ellipse", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
-      cv::namedWindow("bin image", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
-      cv::imshow("fit ellipse", src_img);
-      cv::imshow("bin image", bin_img);
-      cv::waitKey(0);
+      //cv::namedWindow("fit ellipse", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
+      //cv::namedWindow("bin image", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
+      //cv::imshow("fit ellipse", src_img);
+      //cv::imshow("bin image", bin_img);
+      //cv::waitKey(0);
       // Output 
       pub_.publish(rect_msg);
     }
