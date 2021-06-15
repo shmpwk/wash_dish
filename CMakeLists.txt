@@ -8,7 +8,16 @@ project(wash_dish)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED)
-
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  sensor_msgs
+  cv_bridge
+  std_msgs
+  image_transport
+  jsk_recognition_msgs
+  image_transport
+)
+find_package(OpenCV REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -113,7 +122,8 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
-# ${catkin_INCLUDE_DIRS}
+ ${catkin_INCLUDE_DIRS}
+ ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -130,7 +140,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/wash_dish_node.cpp)
-
+add_executable(cv_hough src/cv_hough.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -143,8 +153,10 @@ include_directories(
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(cv_hough
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+)
 
 #############
 ## Install ##
