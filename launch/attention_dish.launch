@@ -63,15 +63,16 @@
     <remap from="~input" to="rects_to_cpi_hough/output" />
     <remap from="~output" to="rects_to_cpi_hough/output_throttle" />
   </node>
- <node name="segmentation_decomposer_hough" pkg="nodelet" type="nodelet"
+  <node name="segmentation_decomposer_hough" pkg="nodelet" type="nodelet"
         args="load jsk_pcl/ClusterPointIndicesDecomposer $(arg manager)"
         output="screen" 
         machine="$(arg machine)">
-        <remap from="~input" to="/plane_extraction_ssd/output" />
+        <!--remap from="~input" to="/plane_extraction_ssd/output" /-->
+        <remap from="~input" to="/hough_pointcloud" />
         <remap from="~target" to="/rects_to_cpi_hough/output" />
-        <remap from="~align_planes" to="/multi_plane_estimate_ssd/output_refined_polygon" />
-        <remap from="~align_planes_coefficients"
-           to="/multi_plane_estimate_ssd/output_refined_coefficients" />
+        <!--remap from="~align_planes" to="/multi_plane_estimate_ssd/output_refined_polygon" /-->
+        <!--remap from="~align_planes_coefficients"
+           to="/multi_plane_estimate_ssd/output_refined_coefficients" /-->
     <rosparam subst_value="true">
       approximate_sync: true  
       align_boxes: false
