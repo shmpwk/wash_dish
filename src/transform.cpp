@@ -6,11 +6,11 @@
 
 class Transform
 {
+private:
   ros::NodeHandle nh;
   ros::Subscriber sub;
   ros::Publisher pub;
   tf::StampedTransform transform;
-
 
 public:
   Transform()
@@ -22,7 +22,6 @@ public:
   void pc_callback(sensor_msgs::PointCloud2 pc2){
     sensor_msgs::PointCloud2 pc2_transformed;
     tf::TransformListener listener;
-    ROS_INFO("Sub!");
     listener.waitForTransform("heightmap_center", "head_mount_kinect_rgb_optical_frame", ros::Time(0), ros::Duration(100));
     listener.lookupTransform("heightmap_center", "head_mount_kinect_rgb_optical_frame", ros::Time(0), transform);
     pcl_ros::transformPointCloud("heightmap_center", transform, pc2, pc2_transformed);
@@ -33,7 +32,7 @@ public:
 
 int main(int argc, char** argv){
   ros::init(argc,argv,"transform_test");
-
+  Transform trans;
   // wait until getting tf 
   //while(true){
   //  try{
