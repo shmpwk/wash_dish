@@ -44,6 +44,8 @@
       <arg name="use_sim" default="$(arg use_sim)"/>
   </include>
 
+  <node name="hough_converter" pkg="wash_dish" type="cv_hough" />
+
   <node name="rects_to_cpi_hough"
         pkg="jsk_recognition_utils" type="rect_array_to_cluster_point_indices.py"
         output="screen" >
@@ -52,10 +54,11 @@
     <rosparam>
       approximate_sync: true
       use_info: false
-      img_width: 128
-      img_height: 128
+      img_width: 640
+      img_height: 480
     </rosparam>
   </node>
+
   <node name="throttle_segmentation_hough" pkg="nodelet" type="nodelet"
         args="load jsk_topic_tools/LightweightThrottle $(arg manager)"
         output="screen"
@@ -75,8 +78,6 @@
     </rosparam>
   </node>
   
-  <node name="hough_converter" pkg="wash_dish" type="cv_hough" />
-
   <node name="segmentation_decomposer_hough" pkg="nodelet" type="nodelet"
         args="load jsk_pcl/ClusterPointIndicesDecomposer $(arg manager)"
         output="screen" 
@@ -96,6 +97,8 @@
       publish_clouds: false
       publish_tf: $(arg publish_tf)
       sort_by: -cloud_size 
+      min_size: 1
+      max_size: 1000000000
       use_pca: true
     </rosparam>
   </node>
