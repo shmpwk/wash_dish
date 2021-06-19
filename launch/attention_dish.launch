@@ -97,7 +97,7 @@
       publish_clouds: false
       publish_tf: $(arg publish_tf)
       sort_by: -cloud_size 
-      min_size: 1
+      min_size: 100
       max_size: 1000000000
       use_pca: true
     </rosparam>
