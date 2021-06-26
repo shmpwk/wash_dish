@@ -1,0 +1,19 @@
+<launch>
+  <node name="test_manager"
+        pkg="nodelet" type="nodelet"
+        args="manager"/>
+  <node name="pointcloud_to_cluster_point_indices"
+        pkg="nodelet" type="nodelet"
+        args="load jsk_pcl_utils/PointCloudToClusterPointIndices test_manager">
+    <remap from="~input" to="/hough_pointcloud"/>
+    <rosparam>
+      skip_nan: true
+    </rosparam>
+  </node>
+  <node name="cluster_point_indices_to_point_indices"
+        pkg="nodelet" type="nodelet"
+        args="load jsk_pcl_utils/ClusterPointIndicesToPointIndices test_manager">
+        <remap from="~input" to="/rects_to_cpi_hough/output"/>
+  </node>
+</launch>
+

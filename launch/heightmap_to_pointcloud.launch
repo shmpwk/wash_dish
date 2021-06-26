@@ -1,0 +1,10 @@
+<launch>
+  <node name="heightmap_to_pointcloud"
+        pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/HeightmapToPointCloud sample_manager">
+        <remap from="~input" to="heightmap_morphological_filtering/output"/>
+    <rosparam>
+      keep_organized: true
+    </rosparam>
+  </node>
+</launch>
