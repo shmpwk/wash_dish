@@ -46,7 +46,17 @@
 
   <node name="hough_converter" pkg="wash_dish" type="cv_hough" />
 
-  <node name="rects_to_cpi_hough"
+  <node name="heightmap_to_pointcloud"
+        pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/HeightmapToPointCloud $(arg manager)">
+    <remap from="~input" to="heightmap_converter/output"/>
+    <remap from="~input/config" to="heightmap_converter/output/config"/>
+    <rosparam>
+      keep_organized: true
+    </rosparam>
+  </node>
+
+ <node name="rects_to_cpi_hough"
         pkg="jsk_recognition_utils" type="rect_array_to_cluster_point_indices.py"
         output="screen" >
     <remap from="~input" to="/hough_rect"/>
@@ -54,8 +64,8 @@
     <rosparam>
       approximate_sync: true
       use_info: false
-      img_width: 640
-      img_height: 480
+      img_width: 128
+      img_height: 128
     </rosparam>
   </node>
 
@@ -68,8 +78,8 @@
   </node>
   <node name="tf_transform_cloud"
         pkg="nodelet" type="nodelet"
-        args="standalone jsk_pcl_utils/TfTransformCloud">
-    <remap from="~input" to="/plane_extraction_ssd/output"/>
+        args="load jsk_pcl_utils/TfTransformCloud $(arg manager)">
+        <remap from="~input" to="/heightmap_to_pointcloud/output"/>
     <remap from="~output" to="/hough_pointcloud"/>
     <rosparam>
       target_frame_id: heightmap_center
@@ -99,7 +109,8 @@
       sort_by: -cloud_size 
       min_size: 100
       max_size: 1000000000
-      use_pca: true
+      use_pca: false
+
     </rosparam>
   </node>
 
