@@ -12,7 +12,6 @@
   <node name="heightmap_converter"
         pkg="nodelet" type="nodelet"
         args="load jsk_pcl/HeightmapConverter heightmap_manager">
-    <!--remap from="~input" to="$(arg DEPTH_POINTS)"/-->
     <remap from="~input" to="/robot_self_filtered_points"/>
     <rosparam>
       use_projected_center: true
