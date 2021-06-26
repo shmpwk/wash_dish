@@ -6,6 +6,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
+#include <stdio.h>
 
 static const std::string OPENCV_WINDOW = "Image window";
 
@@ -53,6 +54,7 @@ public:
       cv::findContours(bin_img, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
       jsk_recognition_msgs::RectArray rect_msg;
       rect_msg.header = msg->header;
+      bool flag = false;
       
       for(int i = 0; i < contours.size(); ++i) {
         size_t count = contours[i].size();
@@ -64,24 +66,30 @@ public:
         cv::RotatedRect box = cv::fitEllipse(pointsf);
 
         if (box.size.width < 80 || box.size.height < 80) continue; //remove too small or big edge
+        if (box.size.width > 95 || box.size.height > 95) continue; //remove too small or big edge
         // draw ellipse
+        flag = true;
+        //ROS_INFO("%f", box.size.width); //for debug
+        //ROS_INFO("%f", box.size.height);
         cv::ellipse(src_img, box, cv::Scalar(0,0,0), 2, CV_AA);
         cv::drawMarker(src_img, box.center, cv::Scalar(0,0,0));
         jsk_recognition_msgs::Rect rect;
-        rect.x = box.center.x;
-        rect.y = box.center.y;
+        rect.x = box.center.x/2;
+        rect.y = box.center.y/4;
         rect.width = box.size.width;
         rect.height = box.size.height;
         rect_msg.rects.push_back(rect);
       }
 
-      //cv::namedWindow("fit ellipse", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
-      //cv::namedWindow("bin image", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
-      //cv::imshow("fit ellipse", src_img);
-      //cv::imshow("bin image", bin_img);
-      //cv::waitKey(0);
-      // Output 
-      pub_.publish(rect_msg);
+      if (flag == true) {
+        //cv::namedWindow("fit ellipse", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
+        //cv::namedWindow("bin image", CV_WINDOW_AUTOSIZE|CV_WINDOW_FREERATIO);
+        //cv::imshow("fit ellipse", src_img);
+        //cv::imshow("bin image", bin_img);
+        //cv::waitKey(0);
+        // Output 
+        pub_.publish(rect_msg);
+      }
     }
     catch (cv_bridge::Exception& e)
     {
