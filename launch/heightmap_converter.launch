@@ -12,7 +12,7 @@
   <node name="heightmap_converter"
         pkg="nodelet" type="nodelet"
         args="load jsk_pcl/HeightmapConverter heightmap_manager">
-    <remap from="~input" to="/robot_self_filtered_points"/>
+        <remap from="~input" to="/extract_indices_attention/output"/>
     <rosparam>
       use_projected_center: true
       fixed_frame_id: base_footprint

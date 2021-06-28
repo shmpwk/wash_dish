@@ -25,12 +25,29 @@
   
   <node name="dish_attention_clipper"
         pkg="nodelet" type="nodelet"
-        args="standalone jsk_pcl/AttentionClipper">
+        args="load jsk_pcl/AttentionClipper $(arg manager)">
         <remap from="~input" to="/kinect_head/rgb/camera_info" />
-        <remap from="~input/points" to="/plane_extraction_ssd/output" />
-        <!--remap from="~input/points" to="/extract_indices/output" /-->
+        <!--remap from="~input/points" to="/plane_extraction_ssd/output" /-->
+        <remap from="~input/points" to="/robot_self_filtered_points" />
         <!--remap from="~input/box" to="/segmentation_decomposer_ssd/boxes/boxes[0]" /-->
-        <remap from="~input/box_array" to="/segmentation_decomposer_ssd/boxes" />
+        <!--remap from="~input/box_array" to="/segmentation_decomposer_ssd/boxes" /-->
+    <rosparam>
+      initial_pos: [0, 0.0, 0.8]
+      initial_rot: [-0.65, 0, 0]
+      dimension_x: 0.7
+      dimension_y: 0.5
+      dimension_z: 0.5
+      frame_id: head_mount_kinect_rgb_optical_frame
+    </rosparam>
+  </node>
+
+  <node name="extract_indices_attention"
+        pkg="jsk_pcl_ros" type="extract_indices">
+    <remap from="~input" to="/robot_self_filtered_points" />
+    <remap from="~indices" to="dish_attention_clipper/output/point_indices" />
+    <rosparam>
+      keep_organized: true
+    </rosparam>
   </node>
 
   <include file="$(find wash_dish)/launch/virtual_camera_mono.launch" >
@@ -111,6 +128,25 @@
       max_size: 1000000000
       use_pca: false
 
+    </rosparam>
+  </node>
+
+  <!-- interactive -->
+  <node name="bounding_box_marker_hough" pkg="jsk_interactive_marker" type="bounding_box_marker"
+        output="screen"
+        machine="$(arg machine)">
+    <remap from="~bounding_box_array" to="segmentation_decomposer_hough/boxes" />
+  </node>
+  <node name="selected_cloud_hough" pkg="nodelet" type="nodelet"
+        args="load jsk_pcl/SelectedClusterPublisher $(arg manager)"
+        output="screen"
+        machine="$(arg machine)">
+    <remap from="~input" to="/plane_extraction_hough/output" />
+    <remap from="~indices" to="/rects_to_cpi_hough/output" />
+    <remap from="~selected_index" to="/bounding_box_marker_hough/selected_index" />
+    <remap from="~output" to="/selected_pointcloud" />
+    <rosparam>
+      keep_organized: true
     </rosparam>
   </node>
 

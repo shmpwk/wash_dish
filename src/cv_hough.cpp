@@ -65,12 +65,12 @@ public:
         // fitting ellipse
         cv::RotatedRect box = cv::fitEllipse(pointsf);
 
-        if (box.size.width < 80 || box.size.height < 80) continue; //remove too small or big edge
-        if (box.size.width > 95 || box.size.height > 95) continue; //remove too small or big edge
+        if (box.size.width < 70 || box.size.height < 70) continue; //remove too small or big edge
+        if (box.size.width > 110 || box.size.height > 115) continue; //remove too small or big edge
         // draw ellipse
         flag = true;
-        //ROS_INFO("%f", box.size.width); //for debug
-        //ROS_INFO("%f", box.size.height);
+        ROS_INFO("%f", box.size.width); //for debug
+        ROS_INFO("%f", box.size.height);
         cv::ellipse(src_img, box, cv::Scalar(0,0,0), 2, CV_AA);
         cv::drawMarker(src_img, box.center, cv::Scalar(0,0,0));
         jsk_recognition_msgs::Rect rect;
