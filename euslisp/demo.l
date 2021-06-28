@@ -3,10 +3,10 @@
 ;; Author: Yuki Furuta <furushchev@jsk.imi.i.u-tokyo.ac.jp>
 ;; Editor: Shumpei Wakabayashi <wakabayashi@jsk.imi.i.u-tokyo.ac.jp>
 
-(defvar *grasp-target-bounding-box-topic* "/bounding_box_marker/selected_box")
+(defvar *grasp-target-bounding-box-topic* "/bounding_box_marker_hough/selected_box")
 (defvar *grasp-status-topic* "/tabletop_object_grasp_status")
 (defvar *base-frame-id* "/base_footprint")
-(defvar *grasp-bbox* "/segmentation_decomposer_ssd/boxes")
+(defvar *grasp-bbox* "/segmentation_decomposer_hough/boxes")
 
 (ros::load-ros-manifest "jsk_recognition_msgs")
 (ros::load-ros-manifest "jsk_rviz_plugins")
@@ -23,7 +23,7 @@
 
 (defun pr2-pregrasp-pose ()
   ;;(send *pr2* :angle-vector #f(299.712 26.8145 7.05076 49.0149 -70.8937 92.6094 -81.3427 -6.18613 -18.0939 18.0364 -20.0459 -84.4307 -131.577 -114.592 -21.328 -3 54.75))
-  (send *ri* :angle-vector #f(299.584 32.4198 -18.2842 75.5948 -59.3308 85.8148 -63.3319 12.496 -27.3948 -19.9926 -123.775 -49.8499 -1.59595 -97.3288 63.8495 -0.311299 51.318))
+  (send *pr2* :angle-vector #f(299.584 32.4198 -18.2842 75.5948 -59.3308 85.8148 -63.3319 12.496 -27.3948 -19.9926 -123.775 -49.8499 -1.59595 -97.3288 63.8495 -0.311299 51.318))
   (send *ri* :angle-vector (send *pr2* :angle-vector) 5000)
   (send *ri* :wait-interpolation))
 
