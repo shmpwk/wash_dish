@@ -109,18 +109,6 @@
                   :transform cds)))
     )
   )
- 
-(defun start-collect ()
-  (ros::wait-for-service "/seq_data_collection/start_request")
-  (setq req (instance std_srvs::TriggerRequest :init))
-  (setq res (ros::service-call "/seq_data_collection/start_request" req))
-  )
-
-(defun end-collect ()
-  (ros::wait-for-service "/seq_data_collection/end_request")
-  (setq req (instance std_srvs::TriggerRequest :init))
-  (setq res (ros::service-call "/seq_data_collection/end_request" req))
-  )
 
 
 (defun test ()
@@ -235,8 +223,6 @@
     ;(ready-to-regrasp)
     ;(correct-r-posture)
     ;(regrasp-model-larm)
-    (send *ri* :stop-grasp *larm* :wait nil)
-    (send *ri* :stop-grasp *rarm* :wait nil)
    
     ;;(setq *grasp-state* "grasp-opening")
     ;;(publish-grasp-state)
@@ -250,6 +236,20 @@
     ;;(send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
     ;;(send *ri* :wait-interpolation)
     ;;(publish-info "pre grasp pose")
+
+    (setq *grasp-state* "placing")
+    (publish-grasp-state)
+    (publish-info "placing ...")
+    (send *pr2* *rarm* :move-end-pos #f(0 0 -200) :world)
+    (send *ri* :angle-vector (send *pr2* :angle-vector) 3000)
+    (send *ri* :wait-interpolation)
+
+    (setq *grasp-state* "grasp-opening")
+    (publish-grasp-state)
+    (send *ri* :stop-grasp *rarm* :wait t)
+    (send *ri* :stop-grasp *larm* :wait nil)
+    (publish-info "return object...")
+
 
     (setq *grasp-state* "returning")
     (publish-grasp-state)
