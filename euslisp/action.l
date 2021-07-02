@@ -23,7 +23,7 @@
   (unless
     (send *pr2* *larm* :inverse-kinematics
   	(make-coords :pos (v+ (send hold-obj :worldpos)
-  			      (float-vector -50 (- (/ (car *init-d-xyz*) 2.5) -50) 20))
+  			      (float-vector -50 (- (/ (car *init-d-xyz*) 2.5) -50) 0))
   		     :rpy #f(-1.0 0.6 -1.54))
   	:rotation-axis :t
       :revert-if-fail nil
@@ -57,7 +57,7 @@
   (unless
     (send *pr2* *larm* :inverse-kinematics
   	(make-coords :pos (v+ (send hold-obj :worldpos)
-  			      (float-vector 0 (- (/ (car *init-d-xyz*) 2.5) -50) 10))
+  			      (float-vector 0 (- (/ (car *init-d-xyz*) 2.5) -50) 0))
   		     :rpy #f(-1.0 0.6 -1.54))
   	:rotation-axis :t
       :revert-if-fail nil
@@ -91,7 +91,7 @@
   (unless
     (send *pr2* *larm* :inverse-kinematics
   	(make-coords :pos (v+ (send hold-obj :worldpos)
-  			      (float-vector 50 (- (/ (car *init-d-xyz*) 2.5) -50) 10))
+  			      (float-vector 50 (- (/ (car *init-d-xyz*) 2.5) -50) 0))
   		     :rpy #f(-1.0 0.6 -1.54))
   	:rotation-axis :t
       :revert-if-fail nil
