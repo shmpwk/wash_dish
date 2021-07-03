@@ -13,6 +13,8 @@ from jsk_recognition_msgs.msg import *
 from geometry_msgs.msg import *
 from std_msgs.msg import *
 
+global force_arr
+
 def save_data(force_all):
     with open('all_force.pkl', 'wb') as f:
         pickle.dump(force_all, f)
@@ -21,6 +23,7 @@ def sig_handler(signum, frame):
     sys.exit(1)
 
 def wrench_cb(l_wrench, r_wrench):
+    global force_arr
     lx_force =  l_wrench.wrench.force.x
     ly_force =  l_wrench.wrench.force.y
     lz_force =  l_wrench.wrench.force.z
