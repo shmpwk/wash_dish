@@ -1,6 +1,7 @@
 <launch>
   <arg name="manager" default="pointcloud" />
   <arg name="points" default="/head_camera_remote/depth_registered/points" />
+  <arg name="input" default="/organized_edge_detector/output" />
 
   <group ns="pcl_nodelet">
     <node name="$(arg manager)" pkg="nodelet" type="nodelet" args="manager"
@@ -37,7 +38,8 @@
       args="load jsk_pcl/HSIColorFilter $(arg manager)" 
       output="screen">
       <!--remap from="~input" to="/pcl_nodelet/point_cloud_one_look" /-->
-      <remap from="~input" to="/pcl_nodelet/ExtractIndices/output" />
+      <!--remap from="~input" to="/pcl_nodelet/ExtractIndices/output" /-->
+      <remap from="~input" to="$(arg input)" />
       <rosparam>
         use_indices: false
         keep_organized: false
@@ -54,7 +56,8 @@
       args="load jsk_pcl/HSIColorFilter $(arg manager)" 
       output="screen">
       <!--remap from="~input" to="/pcl_nodelet/point_cloud_sequence_merged" /-->
-      <remap from="~input" to="/pcl_nodelet/ExtractIndices/output" />
+      <!--remap from="~input" to="/pcl_nodelet/ExtractIndices/output" /-->
+      <remap from="~input" to="$(arg input)" />
       <rosparam>
         use_indices: false
         keep_organized: false
