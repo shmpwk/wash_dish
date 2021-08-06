@@ -184,7 +184,7 @@ class WashSystem():
             loss.backward()
             self.train_optimizer.step()       
 
-    def realtime_feedback(self):
+    def realtime_feedback(self, simulate=False, online_training=False):
         rospy.init_node('prediction')
         rospy.Subscriber('/dish_state', Float64MultiArray, self.predict_callback, queue_size=1)
         #rospy.Subscriber('/end effector pos ?', Float64MultiArray, self.predict_callback, queue_size=1)
