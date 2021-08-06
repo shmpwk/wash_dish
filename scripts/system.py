@@ -192,3 +192,53 @@ class WashSystem():
         
         pub = rospy.Publisher('/hough_pointcloud', PointCloud2, queue_size=100)
         rospy.Rate(30)
+   
+if __name__ == '__main__':
+    signal.signal(signal.SIGINT, lambda signal, frame: sys.exit(0))
+
+    # init arg parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train", "-t", nargs='?', default=False, const=True, help="train NN")
+    parser.add_argument("--action", "-a", default=2, help="0:simulate 1:realtime feedback with simulate 2:realtime feedback with real robot")
+    #parser.add_argument("--model", "-m", default='../log/diabolo_system/mymodel.h5', help="which model do you use")
+    parser.add_argument("--online_training", "-o", nargs='?', default=False, const=True, help="online training")                
+    args = parser.parse_args()
+
+    # parse
+    train_flag = int(args.train)   # parse train
+    action = int(args.action)   # parse action
+    #model_file = args.model   # which model
+    online_training_ = args.online_training   # which model
+    
+    ws = WashSystem()
+    
+    # train model or load model
+    if train_flag:
+        ws.load_data(LOG_FILES)
+        ws.arrange_data()
+        ws.make_model()
+        print('[Train] start')        
+        ws.train(loop_num=500)
+        ws.save_model()
+    #else:
+    #    ws.load_data(LOG_FILES)
+    #    ws.arrange_data()
+    #    ws.make_model()
+    #    print('[Train] pass')                
+    #    ws.load_model(log_file=model_file)
+    #    print('load model from {}'.format(model_file))
+        
+    # test
+    print('[Test] start')            
+    ws.test()
+
+    # action
+    if action == 0:
+        print('[Simulate] start')
+        #ws.simulate_offline(simulate_loop_num=300)
+    elif action == 1:
+        print('[RealtimeFeedback] start with simulate')                
+        ws.realtime_feedback(simulate=True, online_training=False)
+    elif action == 2:
+        print('[RealtimeFeedback] start with real robot')                
+        ws.realtime_feedback(simulate=False, online_training=online_training_)     
