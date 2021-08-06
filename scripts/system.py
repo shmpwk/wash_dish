@@ -140,6 +140,9 @@ class WashSystem():
         self.past_inputs = []
         self.now_input = [0.7, 0]
 
+        # train parameters
+        self.LOOP_NUM = 1
+
     def predict_callback(self, msg):
         # store past states data
 
@@ -148,30 +151,28 @@ class WashSystem():
         # optimize input ??
 
         # online training 
+        # train
+        losses = 0
+        for i in range(LOOP_NUM):
+            x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
+            t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
 
-            # train
-            loop_num = 1
-            losses = 0
-            for i in range(loop_num):
-                x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
-                t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
+            self.train_optimizer.zero_grad()
+            outputs = self.model(x_)
+            loss = self.criterion(outputs.view_as(t_), t_)
+            loss.backward()
+            self.train_optimizer.step()
+            losses += loss.data
 
-                self.train_optimizer.zero_grad()
-                outputs = self.model(x_)
-                loss = self.criterion(outputs.view_as(t_), t_)
-                loss.backward()
-                self.train_optimizer.step()
-                losses += loss.data
+            writer = SummaryWriter(log_dir)
+            running_loss += loss.item()
+            writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
+            if i % 100 == 99: 
+                #print('[%d, %5d] loss: %.3f' %
+                #      (epoch + 1, i + 1, running_loss / 100))
+                running_loss = 0.0
+            tensorboard_cnt += 1
 
-                writer = SummaryWriter(log_dir)
-                running_loss += loss.item()
-                writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
-                if i % 100 == 99: 
-                    #print('[%d, %5d] loss: %.3f' %
-                    #      (epoch + 1, i + 1, running_loss / 100))
-                    running_loss = 0.0
-                tensorboard_cnt += 1
- 
     def test(self):
         for data in testloader:
             depth_data, grasp_point, labels = data
