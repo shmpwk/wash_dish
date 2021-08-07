@@ -6,8 +6,10 @@ import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import os
+import os, signal, sys
 import pickle
+import yaml
+import argparse
 import rospy
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
@@ -134,6 +136,7 @@ class WashSystem():
         self.OUTPUT_NN_DIM = self.STATE_DIM
         self.TRAIN_TEST_RATIO = 0.8   # FIX
         self.BATCH_SIZE = 1000   # FIX
+        self.DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         # real data
         self.past_states = []
@@ -149,23 +152,30 @@ class WashSystem():
         self.state_point = []
         self.state_rforce = []
         self.state_lforce = []
-        input_rarm_key = r_arm_controller.yaml
-        input_larm_key = l_arm_controller.yaml
-        state_rforce_key = r_force.yaml
-        state_lforce_key = l_force.yaml
+        input_rarm_key = "r_arm_controller.yaml"
+        input_larm_key = "l_arm_controller.yaml"
+        state_rforce_key = "r_force.yaml"
+        state_lforce_key = "l_force.yaml"
         #state_point_key = point.yaml  # To do
         for dir_name, sub_dirs, files in sorted(os.walk(file_path)):
             for file in sorted(files):
                 if file == input_rarm_key:
-                    with open(os.path.join(dir_name, file), 'rb') as f:
-                        ff = pickle.load(f)
-                        self.input_rarm_dataset = np.append(self.input_rarm_dataset, ff, axis=0)
+                    with open(os.path.join(dir_name, file), 'rb') as rarm:
+                        input_rarm_controller = yaml.safe_load(rarm)
+                        self.input_rarm = np.append(self.input_rarm, input_rarm_controller["desired"]["positions"], axis=0)
                 if file == input_larm_key:
-                    with open(os.path.join(dir_name, file), 'rb') as f:
-                        ff = pickle.load(f)
-                        self.input_larm_dataset = np.append(self.input_larm_dataset, ff, axis=0)
+                    with open(os.path.join(dir_name, file), 'rb') as larm:
+                        input_larm_controller = yaml.safe_load(larm)
+                        self.input_larm = np.append(self.input_larm, input_larm_controller["desired"]["positions"], axis=0)
+        print(self.input_larm)
 
-
+    def make_model(self):
+        self.model = Net()
+        self.model = self.model.to(self.DEVICE)
+        self.criterion = nn.BCEWithLogitsLoss()
+        self.train_optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+        #self.train_optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
+        summary(self.model, [(3, 128, 128), (4,)])
 
     def predict_callback(self, msg):
         # store past states data
@@ -220,7 +230,7 @@ class WashSystem():
             tensorboard_cnt += 1
 
     def test(self):
-        for data in testloader:
+        for data in self:
             depth_data, grasp_point, labels = data
             outputs = self.model(depth_data, grasp_point)
             # lossのgrasp_point偏微分に対してoptimaizationする．
@@ -244,7 +254,7 @@ if __name__ == '__main__':
 
     # init arg parser
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train", "-t", nargs='?', default=False, const=True, help="train NN")
+    parser.add_argument("--train", "-t", nargs='?', default=True, const=True, help="train NN")
     parser.add_argument("--action", "-a", default=2, help="0:simulate 1:realtime feedback with simulate 2:realtime feedback with real robot")
     #parser.add_argument("--model", "-m", default='../log/diabolo_system/mymodel.h5', help="which model do you use")
     parser.add_argument("--online_training", "-o", nargs='?', default=False, const=True, help="online training")                
@@ -262,7 +272,7 @@ if __name__ == '__main__':
     # train model or load model
     if train_flag:
         ws.load_data(FILE_PATH)
-        ws.arrange_data()
+        #ws.arrange_data()
         ws.make_model()
         print('[Train] start')        
         ws.train(loop_num=500)
