@@ -11,14 +11,50 @@ import pickle
 import yaml
 import argparse
 import rospy
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 from std_msgs.msg import Float64MultiArray, Float64
 
+class MyDataset(Dataset):
+    def __init__(self, file_path):
+        self.datanum = 10
+        self.input_rarm = []
+        self.input_larm = []
+        self.state_point = []
+        self.state_rforce = []
+        self.state_lforce = []
+        input_rarm_key = "r_arm_controller.yaml"
+        input_larm_key = "l_arm_controller.yaml"
+        state_rforce_key = "r_force.yaml"
+        state_lforce_key = "l_force.yaml"
+        #state_point_key = point.yaml  # To do
+        for dir_name, sub_dirs, files in sorted(os.walk(file_path)):
+            for file in sorted(files):
+                if file == input_rarm_key:
+                    with open(os.path.join(dir_name, file), 'rb') as rarm:
+                        input_rarm_controller = yaml.safe_load(rarm)
+                        self.input_rarm = np.append(self.input_rarm, input_rarm_controller["desired"]["positions"], axis=0)
+                if file == input_larm_key:
+                    with open(os.path.join(dir_name, file), 'rb') as larm:
+                        input_larm_controller = yaml.safe_load(larm)
+                        self.input_larm = np.append(self.input_larm, input_larm_controller["desired"]["positions"], axis=0)
+        #print(self.input_larm)
+
+    def __len__(self):
+        return self.datanum #should be dataset size / batch size
+
+    def __getitem__(self, idx):
+        i_rarm = self.input_rarm[idx]
+        i_larm = self.input_larm[idx]
+        i_rarm = torch.from_numpy(np.array(i_rarm)).float()
+        i_larm = torch.from_numpy(np.array(i_larm)).float()
+        return i_rarm, i_larm
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        
         """
         This imitates alexnet. 
         self.conv1 = nn.Conv2d(1, 96, kernel_size=11, stride=4, padding=2) #入力チャンネル数は1, 出力チャンネル数は96 
@@ -146,28 +182,15 @@ class WashSystem():
         # train parameters
         self.LOOP_NUM = 1
 
-    def load_data(self, file_path):
-        self.input_rarm = []
-        self.input_larm = []
-        self.state_point = []
-        self.state_rforce = []
-        self.state_lforce = []
-        input_rarm_key = "r_arm_controller.yaml"
-        input_larm_key = "l_arm_controller.yaml"
-        state_rforce_key = "r_force.yaml"
-        state_lforce_key = "l_force.yaml"
-        #state_point_key = point.yaml  # To do
-        for dir_name, sub_dirs, files in sorted(os.walk(file_path)):
-            for file in sorted(files):
-                if file == input_rarm_key:
-                    with open(os.path.join(dir_name, file), 'rb') as rarm:
-                        input_rarm_controller = yaml.safe_load(rarm)
-                        self.input_rarm = np.append(self.input_rarm, input_rarm_controller["desired"]["positions"], axis=0)
-                if file == input_larm_key:
-                    with open(os.path.join(dir_name, file), 'rb') as larm:
-                        input_larm_controller = yaml.safe_load(larm)
-                        self.input_larm = np.append(self.input_larm, input_larm_controller["desired"]["positions"], axis=0)
-        print(self.input_larm)
+    def load_data(self, datasets):
+        train_dataloader = torch.utils.data.DataLoader(
+            datasets, 
+            batch_size=4, 
+            shuffle=True,
+            num_workers=2,
+            drop_last=True
+        )
+        rarm_controller, larm_controller = next(iter(train_dataloader))
 
     def make_model(self):
         self.model = Net()
@@ -187,7 +210,7 @@ class WashSystem():
         # online training 
         # train
         losses = 0
-        for i in range(LOOP_NUM):
+        for i in range(self.LOOP_NUM):
             x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
             t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
 
@@ -207,27 +230,29 @@ class WashSystem():
                 running_loss = 0.0
             tensorboard_cnt += 1
 
-    def train(self):
-        losses = 0
-        for i in range(LOOP_NUM):
-            x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
-            t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
+    def train(self, train_dataloader):
+        for epoch in range(2):
+            losses = 0
+            for i, data in enumerate(train_dataloader, 0):
+                input_rarm, input_larm = data
+                x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
+                t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
 
-            self.train_optimizer.zero_grad()
-            outputs = self.model(x_)
-            loss = self.criterion(outputs.view_as(t_), t_)
-            loss.backward()
-            self.train_optimizer.step()
-            losses += loss.data
+                self.train_optimizer.zero_grad()
+                outputs = self.model(x_)
+                loss = self.criterion(outputs.view_as(t_), t_)
+                loss.backward()
+                self.train_optimizer.step()
+                losses += loss.data
 
-            writer = SummaryWriter(log_dir)
-            running_loss += loss.item()
-            writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
-            if i % 100 == 99: 
-                #print('[%d, %5d] loss: %.3f' %
-                #      (epoch + 1, i + 1, running_loss / 100))
-                running_loss = 0.0
-            tensorboard_cnt += 1
+                writer = SummaryWriter(log_dir)
+                running_loss += loss.item()
+                writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
+                if i % 100 == 99: 
+                    #print('[%d, %5d] loss: %.3f' %
+                    #      (epoch + 1, i + 1, running_loss / 100))
+                    running_loss = 0.0
+                tensorboard_cnt += 1
 
     def test(self):
         for data in self:
@@ -271,11 +296,12 @@ if __name__ == '__main__':
     
     # train model or load model
     if train_flag:
-        ws.load_data(FILE_PATH)
+        datasets = MyDataset(FILE_PATH)
+        train_dataloader = ws.load_data(datasets)
         #ws.arrange_data()
         ws.make_model()
         print('[Train] start')        
-        ws.train(loop_num=500)
+        ws.train(train_dataloader)
         ws.save_model()
     #else:
     #    ws.load_data(LOG_FILES)
