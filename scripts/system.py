@@ -143,6 +143,30 @@ class WashSystem():
         # train parameters
         self.LOOP_NUM = 1
 
+    def load_data(self, file_path):
+        self.input_rarm = []
+        self.input_larm = []
+        self.state_point = []
+        self.state_rforce = []
+        self.state_lforce = []
+        input_rarm_key = r_arm_controller.yaml
+        input_larm_key = l_arm_controller.yaml
+        state_rforce_key = r_force.yaml
+        state_lforce_key = l_force.yaml
+        #state_point_key = point.yaml  # To do
+        for dir_name, sub_dirs, files in sorted(os.walk(file_path)):
+            for file in sorted(files):
+                if file == input_rarm_key:
+                    with open(os.path.join(dir_name, file), 'rb') as f:
+                        ff = pickle.load(f)
+                        self.input_rarm_dataset = np.append(self.input_rarm_dataset, ff, axis=0)
+                if file == input_larm_key:
+                    with open(os.path.join(dir_name, file), 'rb') as f:
+                        ff = pickle.load(f)
+                        self.input_larm_dataset = np.append(self.input_larm_dataset, ff, axis=0)
+
+
+
     def predict_callback(self, msg):
         # store past states data
 
@@ -152,6 +176,28 @@ class WashSystem():
 
         # online training 
         # train
+        losses = 0
+        for i in range(LOOP_NUM):
+            x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
+            t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
+
+            self.train_optimizer.zero_grad()
+            outputs = self.model(x_)
+            loss = self.criterion(outputs.view_as(t_), t_)
+            loss.backward()
+            self.train_optimizer.step()
+            losses += loss.data
+
+            writer = SummaryWriter(log_dir)
+            running_loss += loss.item()
+            writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
+            if i % 100 == 99: 
+                #print('[%d, %5d] loss: %.3f' %
+                #      (epoch + 1, i + 1, running_loss / 100))
+                running_loss = 0.0
+            tensorboard_cnt += 1
+
+    def train(self):
         losses = 0
         for i in range(LOOP_NUM):
             x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
@@ -211,10 +257,11 @@ if __name__ == '__main__':
     online_training_ = args.online_training   # which model
     
     ws = WashSystem()
+    FILE_PATH = "Data/seq_data/wash_dish"
     
     # train model or load model
     if train_flag:
-        ws.load_data(LOG_FILES)
+        ws.load_data(FILE_PATH)
         ws.arrange_data()
         ws.make_model()
         print('[Train] start')        
@@ -233,12 +280,12 @@ if __name__ == '__main__':
     ws.test()
 
     # action
-    if action == 0:
-        print('[Simulate] start')
-        #ws.simulate_offline(simulate_loop_num=300)
-    elif action == 1:
-        print('[RealtimeFeedback] start with simulate')                
-        ws.realtime_feedback(simulate=True, online_training=False)
-    elif action == 2:
-        print('[RealtimeFeedback] start with real robot')                
-        ws.realtime_feedback(simulate=False, online_training=online_training_)     
+    #if action == 0:
+    #    print('[Simulate] start')
+    #    #ws.simulate_offline(simulate_loop_num=300)
+    #elif action == 1:
+    #    print('[RealtimeFeedback] start with simulate')                
+    #    ws.realtime_feedback(simulate=True, online_training=False)
+    #elif action == 2:
+    #    print('[RealtimeFeedback] start with real robot')                
+    #    ws.realtime_feedback(simulate=False, online_training=online_training_)     
