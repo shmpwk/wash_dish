@@ -6,6 +6,8 @@
   <arg name="manager" default="attention_manager" />
   <arg unless="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/kinect_head/rgb/camera_info"/>
   <arg if="$(arg use_sim)" name="RGB_CAMERA_INFO" value="/head_mount_kinect/rgb/camera_info"/>
+  <arg name="points" value="/kinect_head/depth_registered/quater/points" />
+  <!--arg name="points" value="/robot_self_filtered_points" /--><!--This should be used when self filter topic exist /-->
   <!--arg name="RGB_CAMERA_INFO" value="/head_mount_kinect/rgb/camera_info"/-->
 
   <machine name="localhost" address="localhost" />
@@ -23,12 +25,28 @@
         pkg="nodelet" type="nodelet"
         args="manager"/>
   
+  <!--Duplicate when using real pr2 and it is heavy so that I won't use with sim but save with real pr2/-->
+  <node name="self_filter"
+        pkg="robot_self_filter" type="self_filter"
+        clear_params="true" respawn="true">
+    <remap from="robot_description" to="/robot_description" />
+    <remap from="cloud_in" to="/kinect_head/depth_registered/quater/points" />
+    <remap from="cloud_out" to="robot_self_filtered_points" />
+    <rosparam>
+      use_rgb: true
+      keep_organized: true
+      subsample_value: 0.0
+    </rosparam>
+    <rosparam command="load"
+              file="$(find jsk_2020_4_carry_dish)/config/self_filter.yaml" />
+  </node>
+
   <node name="dish_attention_clipper"
         pkg="nodelet" type="nodelet"
         args="load jsk_pcl/AttentionClipper $(arg manager)">
         <remap from="~input" to="/kinect_head/rgb/camera_info" />
         <!--remap from="~input/points" to="/plane_extraction_ssd/output" /-->
-        <remap from="~input/points" to="/robot_self_filtered_points" />
+        <remap from="~input/points" to="$(arg points)" />
         <!--remap from="~input/box" to="/segmentation_decomposer_ssd/boxes/boxes[0]" /-->
         <!--remap from="~input/box_array" to="/segmentation_decomposer_ssd/boxes" /-->
     <rosparam>
@@ -43,7 +61,7 @@
 
   <node name="extract_indices_attention"
         pkg="jsk_pcl_ros" type="extract_indices">
-    <remap from="~input" to="/robot_self_filtered_points" />
+    <remap from="~input" to="/$(arg points)" />
     <remap from="~indices" to="dish_attention_clipper/output/point_indices" />
     <rosparam>
       keep_organized: true
@@ -53,7 +71,7 @@
   <include file="$(find wash_dish)/launch/virtual_camera_mono.launch" >
       <arg name="RGB_IMAGE" value="$(arg RGB_IMAGE)" />
       <arg name="RGB_CAMERA_INFO" value="$(arg RGB_CAMERA_INFO)" />
-      <arg name="CLOUD" value="/robot_self_filtered_points" />
+      <arg name="CLOUD" value="/$(arg points)" />
   </include>
 
   <include file="$(find wash_dish)/launch/heightmap_morphological_filtering.launch">
