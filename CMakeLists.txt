@@ -143,6 +143,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/wash_dish_node.cpp)
 add_executable(cv_hough src/cv_hough.cpp)
+add_executable(cv_circle src/cv_circle.cpp)
 add_executable(transform src/transform.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -157,6 +158,10 @@ add_executable(transform src/transform.cpp)
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 target_link_libraries(cv_hough 
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+)
+target_link_libraries(cv_circle 
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
 )
