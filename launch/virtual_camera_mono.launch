@@ -31,9 +31,9 @@
     </rosparam>
   </node>
 
-  <node name="virtual_camera_static_tf_publisher"
+  <!--node name="virtual_camera_static_tf_publisher"
         pkg="tf" type="static_transform_publisher"
-        args="0.0 0.0 0.5 1.0 0.0 0.0 0.0 /segmentation_decomposer_ssdoutput00 /virtual_camera_optical_frame 30"/>
+        args="0.0 0.0 0.5 1.0 0.0 0.0 0.0 /segmentation_decomposer_ssdoutput00 /virtual_camera_optical_frame 30"/-->
 
 
   <node name="extracted_depth_image_creator" pkg="nodelet" type="nodelet" args="standalone jsk_pcl/DepthImageCreator">
