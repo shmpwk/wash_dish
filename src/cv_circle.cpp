@@ -70,20 +70,9 @@ class ImageConverter{
         p1 = cv::Point2f(cv_ptr->image.size().width/2,cv_ptr->image.size().height/2);
         cv::arrowedLine(cv_ptr->image, p1, center, cv::Scalar(0, 255, 0, 0), 3, 8, 0, 0.1);  
 
-        // 画像サイズは縦横1/4に変更
-        cv::Mat cv_half_image, cv_half_image2, cv_half_image3, cv_half_image4, cv_half_image5;
-        cv::resize(cv_ptr->image, cv_half_image,cv::Size(),0.5,0.5);
-        cv::resize(src_img, cv_half_image2,cv::Size(),0.5,0.5);
-        //cv::resize(cv_ptr3->image, cv_half_image3,cv::Size(),0.5,0.5);
-        cv::resize(gray_img, cv_half_image4,cv::Size(),0.5,0.5);
-        cv::resize(bin_img, cv_half_image5,cv::Size(),0.5,0.5);
-
         // ウインドウ表示                                                                         
-        cv::imshow("Original Image", cv_half_image);
-        cv::imshow("Result Image", cv_half_image2);
-        //cv::imshow("Edge Image", cv_half_image3);
-        //cv::imshow("Gray Image", cv_half_image4);
-        cv::imshow("Binary Image", cv_half_image5);
+        cv::imshow("Result Image", src_img);
+        cv::imshow("Binary Image", bin_img);
         cv::waitKey(3);
   
         // エッジ画像をパブリッシュ。OpenCVからROS形式にtoImageMsg()で変換。                                                            
