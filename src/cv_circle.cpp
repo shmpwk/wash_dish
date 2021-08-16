@@ -41,8 +41,8 @@ class ImageConverter{
 
         cv::bitwise_and(cv_ptr->image, cv_ptr->image, cv_image2, color_mask);
         cv::cvtColor(cv_image2, gray_img, CV_BGR2GRAY);
-        cv::threshold(gray_img, bin_img, 0.00000000000000000001, 255, CV_THRESH_BINARY); 
-        //cv::adaptiveThreshold(gray_img, bin_img, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 5, 0);
+        //cv::threshold(gray_img, bin_img, 0.00000000000000000001, 255, CV_THRESH_BINARY); 
+        cv::adaptiveThreshold(gray_img, bin_img, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 21, 5);
 
         std::vector<std::vector<cv::Point> > contours;
         // binary
