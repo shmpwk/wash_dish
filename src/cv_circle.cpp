@@ -48,7 +48,7 @@ class ImageConverter{
         // binary
         //cv::threshold(gray_img, bin_img, 28.9999999999999982236432, 255, cv::THRESH_BINARY);
         // get edge
-        cv::findContours(bin_img, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+        cv::findContours(bin_img, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE);
         jsk_recognition_msgs::RectArray rect_msg;
         rect_msg.header = msg->header;
 
