@@ -65,16 +65,16 @@ class ImageConverter{
         }
 
         // 最大面積を持つ輪郭の最小外接円を取得
-        //cv::minEnclosingCircle(contours.at(max_area_contour), center, radius);
-        for(int j=0; j<contours.size(); j++){
-          cv::minEnclosingCircle(contours.at(j), center, radius);
-          ROS_INFO("radius = %f", radius);
+        cv::minEnclosingCircle(contours.at(max_area_contour), center, radius);
+        //for(int j=0; j<contours.size(); j++){
+        //cv::minEnclosingCircle(contours.at(j), center, radius);
+        ROS_INFO("radius = %f", radius);
 
-          // 最小外接円を描画
-          cv::circle(cv_ptr->image, center, radius, cv::Scalar(0,0,255),3,4);
-          cv::circle(src_img, center, radius, cv::Scalar(0,0,255),3,4);
-          cv::circle(bin_img, center, radius, cv::Scalar(0,0,255),3,4);
-        }
+        // 最小外接円を描画
+        cv::circle(cv_ptr->image, center, radius, cv::Scalar(0,0,255),3,4);
+        cv::circle(src_img, center, radius, cv::Scalar(0,0,255),3,4);
+        cv::circle(bin_img, center, radius, cv::Scalar(0,0,255),3,4);
+        //}
 
         // 画面中心から最小外接円の中心へのベクトルを描画
         //p1 = cv::Point2f(cv_ptr->image.size().width/2,cv_ptr->image.size().height/2);
