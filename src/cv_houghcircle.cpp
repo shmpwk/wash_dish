@@ -43,11 +43,11 @@ class ImageConverter{
 
         cv::bitwise_and(cv_ptr->image, cv_ptr->image, cv_image2, color_mask);
         cv::cvtColor(cv_image2, gray_img, CV_BGR2GRAY);
-        cv::GaussianBlur(gray_img, gray_img, cv::Size(3, 3), 2, 2 );
+        cv::GaussianBlur(gray_img, gray_img, cv::Size(1, 1), 1, 1);
         std::vector<cv::Vec3f> circles;
         cv::HoughCircles(gray_img, circles, cv::HOUGH_GRADIENT,
-                     4, 1, 200, 50, 0, 200);
-        for( size_t i = 0; i < circles.size(); i++ )
+                     4, 1, 200, 40, 40, 50);
+        for(size_t i = 0; i < circles.size(); i++ )
         {
              cv::Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
              int radius = cvRound(circles[i][2]);
