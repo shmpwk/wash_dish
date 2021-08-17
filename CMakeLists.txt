@@ -144,6 +144,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/wash_dish_node.cpp)
 add_executable(cv_hough src/cv_hough.cpp)
 add_executable(cv_circle src/cv_circle.cpp)
+add_executable(cv_houghcircle src/cv_houghcircle.cpp)
 add_executable(transform src/transform.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -162,6 +163,10 @@ target_link_libraries(cv_hough
    ${OpenCV_LIBRARIES}
 )
 target_link_libraries(cv_circle 
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+)
+target_link_libraries(cv_houghcircle 
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}
 )
