@@ -55,7 +55,6 @@ class ImageConverter{
         // 各輪郭をcontourArea関数に渡し、最大面積を持つ輪郭を探す
         double max_area=0;
         int max_area_contour=-1;
-        ROS_INFO("%f", contours.size());
         for(int j=0; j<contours.size(); j++){
             double area = cv::contourArea(contours.at(j));
             if(max_area<area){
@@ -65,16 +64,18 @@ class ImageConverter{
         }
 
         // 最大面積を持つ輪郭の最小外接円を取得
-        cv::minEnclosingCircle(contours.at(max_area_contour), center, radius);
-        //for(int j=0; j<contours.size(); j++){
-        //cv::minEnclosingCircle(contours.at(j), center, radius);
-        ROS_INFO("radius = %f", radius);
+        //cv::minEnclosingCircle(contours.at(max_area_contour), center, radius);
+        for(int j=0; j<contours.size(); j++){
+            cv::minEnclosingCircle(contours.at(j), center, radius);
+            if(radius>30 && radius<60){ 
+                ROS_INFO("radius = %f", radius);
 
-        // 最小外接円を描画
-        cv::circle(cv_ptr->image, center, radius, cv::Scalar(0,0,255),3,4);
-        cv::circle(src_img, center, radius, cv::Scalar(0,0,255),3,4);
-        cv::circle(bin_img, center, radius, cv::Scalar(0,0,255),3,4);
-        //}
+                // 最小外接円を描画
+                cv::circle(cv_ptr->image, center, radius, cv::Scalar(0,0,255),3,4);
+                cv::circle(src_img, center, radius, cv::Scalar(0,0,255),3,4);
+                cv::circle(bin_img, center, radius, cv::Scalar(0,0,255),3,4);
+            }
+        }
 
         // 画面中心から最小外接円の中心へのベクトルを描画
         //p1 = cv::Point2f(cv_ptr->image.size().width/2,cv_ptr->image.size().height/2);
@@ -102,5 +103,6 @@ int main(int argc, char** argv)
   ImageConverter ic;
   ros::spin();
   return 0;
+
 }
 
