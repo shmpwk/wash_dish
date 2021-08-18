@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <iostream>
+#include <typeinfo>
 #include <ros/ros.h>
 #include <math.h>
 #include <cv.h>
@@ -51,11 +54,16 @@ class ImageConverter{
         {
              cv::Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
              int radius = cvRound(circles[i][2]);
-             // 円の中心を描画します．
-             cv::circle(cv_image2, center, 3, cv::Scalar(0,255,0), -1, 8, 0 );
-             // 円を描画します．
-             cv::circle(cv_image2, center, radius, cv::Scalar(0,0,255), 3, 8, 0 );
-             ROS_INFO("AAAAAAAAAAAAAAA");
+             if (40<center.x && center.x<90 && 40<center.y && center.y<90){
+                 // 円の中心を描画します．
+                 //cv::Mat3b fuga;
+                 //const cv::Vec3b& hoge = fuga(center);
+                 //std::cout << typeid(hoge) << std::endl;
+                 cv::circle(cv_image2, center, 3, cv::Scalar(0,255,0), -1, 8, 0 );
+                 // 円を描画します．
+                 cv::circle(cv_image2, center, radius, cv::Scalar(0,0,255), 3, 8, 0 );
+                 ROS_INFO("AAAAAAAAAAAAAAA");
+             }
         }
         //namedWindow( "circles", 1 );
         cv::imshow( "circles", cv_image2 );
