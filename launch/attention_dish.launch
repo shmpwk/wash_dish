@@ -79,7 +79,7 @@
       <arg name="use_sim" default="$(arg use_sim)"/>
   </include>
 
-  <node name="hough_converter" pkg="wash_dish" type="cv_hough" output="screen" />
+  <node name="hough_converter" pkg="wash_dish" type="cv_houghcircle" output="screen" />
 
   <node name="heightmap_to_pointcloud"
         pkg="nodelet" type="nodelet"
