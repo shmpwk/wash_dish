@@ -17,12 +17,12 @@ class ImageConverter{
   ros::NodeHandle nh_;
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
-  image_transport::Publisher image_pub_;
+  ros::Publisher pub_;
 
   public:
     ImageConverter() : it_(nh_){
       image_sub_ = it_.subscribe("/colorize_float_image_heightmap/output", 1, &ImageConverter::imageCb, this);
-      image_pub_ = it_.advertise("/hough_circle_rect", 1);
+      pub_ = nh_.advertise<jsk_recognition_msgs::RectArray>("/hough_circle_rect", 1);
     }
 
     ~ImageConverter(){
@@ -36,7 +36,6 @@ class ImageConverter{
       cv_bridge::CvImagePtr cv_ptr;
       try{
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-        //cv::Mat src_img = cv::imread("./stuff.jpg", 1);
         cv::Mat src_img = cv_ptr->image;
 
         cv::Mat gray_img, bin_img, cv_image2, hsv_image, color_mask;
@@ -50,6 +49,10 @@ class ImageConverter{
         std::vector<cv::Vec3f> circles;
         cv::HoughCircles(gray_img, circles, cv::HOUGH_GRADIENT,
                      4, 40, 200, 40, 40, 50);
+
+        double tmp = 10000;
+        jsk_recognition_msgs::RectArray rect_msg;
+        rect_msg.header = msg->header;
         for(size_t i = 0; i < circles.size(); i++ )
         {
              cv::Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
@@ -62,61 +65,25 @@ class ImageConverter{
                  cv::circle(cv_image2, center, 3, cv::Scalar(0,255,0), -1, 8, 0 );
                  // 円を描画します．
                  cv::circle(cv_image2, center, radius, cv::Scalar(0,0,255), 3, 8, 0 );
-                 ROS_INFO("AAAAAAAAAAAAAAA");
+                 // Get more center point
+                 if (tmp-60 > center.x-60){
+                     tmp = center.x;
+                     jsk_recognition_msgs::Rect rect;
+                     rect.x = center.x;
+                     rect.y = center.y;
+                     rect.width = 2 * radius;
+                     rect.height = 2 * radius;
+                     rect_msg.rects.push_back(rect);
+                 }
              }
         }
         //namedWindow( "circles", 1 );
         cv::imshow( "circles", cv_image2 );
         cv::imshow("Gray Image", gray_img);
         cv::waitKey(3);
-        ////cv::threshold(gray_img, bin_img, 0.00000000000000000001, 255, CV_THRESH_BINARY); 
-        //cv::adaptiveThreshold(gray_img, bin_img, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 21, 5);
-
-        //std::vector<std::vector<cv::Point> > contours;
-        //// binary
-        ////cv::threshold(gray_img, bin_img, 28.9999999999999982236432, 255, cv::THRESH_BINARY);
-        //// get edge
-        //cv::findContours(bin_img, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-        //jsk_recognition_msgs::RectArray rect_msg;
-        //rect_msg.header = msg->header;
-
-        //// 各輪郭をcontourArea関数に渡し、最大面積を持つ輪郭を探す
-        //double max_area=0;
-        //int max_area_contour=-1;
-        //ROS_INFO("%f", contours.size());
-        //for(int j=0; j<contours.size(); j++){
-        //    double area = cv::contourArea(contours.at(j));
-        //    if(max_area<area){
-        //        max_area=area;
-        //        max_area_contour=j;
-        //    }
-        //}
-
-        //// 最大面積を持つ輪郭の最小外接円を取得
-        //cv::minEnclosingCircle(contours.at(max_area_contour), center, radius);
-        ////for(int j=0; j<contours.size(); j++){
-        ////cv::minEnclosingCircle(contours.at(j), center, radius);
-        //ROS_INFO("radius = %f", radius);
-
-        //// 最小外接円を描画
-        //cv::circle(cv_ptr->image, center, radius, cv::Scalar(0,0,255),3,4);
-        //cv::circle(src_img, center, radius, cv::Scalar(0,0,255),3,4);
-        //cv::circle(bin_img, center, radius, cv::Scalar(0,0,255),3,4);
-        ////}
-
-        //// 画面中心から最小外接円の中心へのベクトルを描画
-        ////p1 = cv::Point2f(cv_ptr->image.size().width/2,cv_ptr->image.size().height/2);
-        ////cv::arrowedLine(cv_ptr->image, p1, center, cv::Scalar(0, 255, 0, 0), 3, 8, 0, 0.1);  
-
-        //// ウインドウ表示                                                                         
-        //cv::imshow("Result Image", src_img);
-        //cv::imshow("Gray Image", gray_img);
-        //cv::imshow("Color mask Image", color_mask);
-        //cv::imshow("Binary Image", bin_img);
-        //cv::waitKey(3);
-  
+ 
         //// エッジ画像をパブリッシュ。OpenCVからROS形式にtoImageMsg()で変換。                                                            
-        //image_pub_.publish(cv_ptr->toImageMsg());
+        pub_.publish(rect_msg);
     
       }catch(CvErrorCallback){
         
