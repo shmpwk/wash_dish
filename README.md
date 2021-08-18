@@ -11,3 +11,8 @@ roslaucnh wash_dish data_collection.launch
 roseus euslisp/demo.l
 ```
 
+## play rosbag 
+```
+roslaunch wash_dish attention_dish.launch
+rosbag play BAGNAME.bag
+```
