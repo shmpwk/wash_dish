@@ -69,8 +69,8 @@ class ImageConverter{
                  if (tmp-60 > center.x-60){
                      tmp = center.x;
                      jsk_recognition_msgs::Rect rect;
-                     rect.x = center.x;
-                     rect.y = center.y;
+                     rect.x = center.x/2;
+                     rect.y = center.y/2;
                      rect.width = 2 * radius;
                      rect.height = 2 * radius;
                      rect_msg.rects.push_back(rect);
