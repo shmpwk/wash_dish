@@ -13,6 +13,6 @@ roseus euslisp/demo.l
 
 ## play rosbag 
 ```
-roslaunch wash_dish attention_dish.launch
+roslaunch wash_dish decompress.launch
 rosbag play BAGNAME.bag
 ```
