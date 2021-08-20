@@ -12,8 +12,8 @@
       message_filters: true
       approximate_sync: true
       queue_size: 1000
-      slop: 0.1
-      method: timer
+      slop: 100
+      method: request
       save_dir: ~/Data/seq_data/wash_dish 
       topics:
         - name: /kinect_head_remote/rgb/image_rect_color
@@ -40,6 +40,14 @@
           msg_class: pr2_controllers_msgs/JointTrajectoryControllerState
           fname: r_arm_controller.yaml
           savetype: YAML 
+        - name: /segmentation_decomposer_hough/boxes 
+          msg_class: jsk_recognition_msgs/BoundingBoxArray
+          fname: bboxes.yaml
+          savetype: YAML
+        - name: /segmentation_decomposer_hough/centroid_pose_array
+          msg_class: geometry_msgs/PoseArray
+          fname: centroid_pose_array.yaml
+          savetype: YAML
 
        <!--  
         - name: /grasp_point
