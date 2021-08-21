@@ -17,6 +17,8 @@ from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 from std_msgs.msg import Float64MultiArray, Float64
 
+from network import *
+
 class MyDataset(Dataset):
     def __init__(self, file_path):
         self.datanum = 10
@@ -27,6 +29,7 @@ class MyDataset(Dataset):
         self.state_lforce = []
         input_rarm_key = "r_arm_controller.yaml"
         input_larm_key = "l_arm_controller.yaml"
+        state_point_key = "obj_point.yaml"
         state_rforce_key = "r_force.yaml"
         state_lforce_key = "l_force.yaml"
         #state_point_key = point.yaml  # To do
@@ -51,109 +54,6 @@ class MyDataset(Dataset):
         i_rarm = torch.from_numpy(np.array(i_rarm)).float()
         i_larm = torch.from_numpy(np.array(i_larm)).float()
         return i_rarm, i_larm
-
-class Net(nn.Module):
-    def __init__(self):
-        super(Net, self).__init__()
-        """
-        This imitates alexnet. 
-        self.conv1 = nn.Conv2d(1, 96, kernel_size=11, stride=4, padding=2) #入力チャンネル数は1, 出力チャンネル数は96 
-        self.conv2 = nn.Conv2d(96, 256, kernel_size=5, padding=2)
-        self.conv3 = nn.Conv2d(256, 384, kernel_size=3, padding=1)
-        self.conv4 = nn.Conv2d(384, 384, kernel_size=3, padding=1)
-        self.conv5 = nn.Conv2d(384, 256, kernel_size=3, padding=1)
-        #self.fc1 = nn.Linear(256 * 6 * 6, 4096)
-        self.fc1 = nn.Linear(50176, 4096)
-        self.fc2 = nn.Linear(4096, 4096)
-        self.fc3 = nn.Linear(4096, 10)
-        self.fc4 = nn.Linear(10 + 4, 14)
-        self.fc5 = nn.Linear(14, 1) # output is 1 dim scalar probability
-        """
-        self.conv1 = nn.Conv2d(3, 4, 3, 2, 1)
-        self.cbn1 = nn.BatchNorm2d(4)
-        self.conv2 = nn.Conv2d(4, 8, 3, 2, 1)
-        self.cbn2 = nn.BatchNorm2d(8)
-        self.conv3 = nn.Conv2d(8, 16, 3, 2, 1)
-        self.cbn3 = nn.BatchNorm2d(16)
-        self.conv4 = nn.Conv2d(16, 32, 3, 2, 1)
-        self.cbn4 = nn.BatchNorm2d(32)
-        self.conv5 = nn.Conv2d(32, 64, 3, 2, 1)
-        self.cbn5 = nn.BatchNorm2d(64)
-        self.fc1 = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 16)
-        self.fc4 = nn.Linear(16, 8)
-        self.fc5 = nn.Linear(8 + 4, 12)
-        self.fc6 = nn.Linear(12, 1) # output is 1 dim scalar probability
-        """
-        self.conv1 = nn.Conv2d(1, 4, 3, 2, 1)
-        self.cbn1 = nn.BatchNorm2d(4)
-        self.conv2 = nn.Conv2d(4, 8, 3, 2, 1)
-        self.cbn2 = nn.BatchNorm2d(8)
-        self.conv3 = nn.Conv2d(8, 16, 3, 2, 1)
-        self.cbn3 = nn.BatchNorm2d(16)
-        self.conv4 = nn.Conv2d(16, 32, 3, 2, 1)
-        self.cbn4 = nn.BatchNorm2d(32)
-        #self.conv5 = nn.Conv2d(32, 64, 3, 2, 1)
-        #self.cbn5 = nn.BatchNorm2d(64)
-        #self.fc1 = nn.Linear(128, 64)
-        self.fc1 = nn.Linear(256, 64)
-        self.fc2 = nn.Linear(64, 16)
-        self.fc3 = nn.Linear(16, 8)
-        self.fc4 = nn.Linear(8 + 4, 12)
-        self.fc5 = nn.Linear(12, 1) # output is 1 dim scalar probability
-        """
-
-    # depth encording without concate grasp point
-    def forward(self, x, y):
-        x = F.max_pool2d(F.relu(self.conv1(x)), 2)
-        x = self.cbn1(x)
-        #x = F.max_pool2d(F.relu(self.conv2(x)), 2)
-        x = F.relu(self.conv2(x))
-        x = self.cbn2(x)
-        x = F.relu(self.conv3(x))
-        x = self.cbn3(x)
-        x = F.relu(self.conv4(x))
-        x = self.cbn4(x)
-        x = F.relu(self.conv5(x))
-        x = self.cbn5(x)
-        x = x.view(-1, self.num_flat_features(x))
-        #depth_data =depth_data.view(depth_data.shape[0], -1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
-        z = torch.cat((x, y), dim=1)
-        z = F.relu(self.fc5(z))
-        z = self.fc6(z)
-        """
-        x = F.max_pool2d(F.relu(self.conv1(x)), 2)
-        x = self.cbn1(x)
-        x = F.max_pool2d(F.relu(self.conv2(x)), 2)
-        x = self.cbn2(x)
-        x = F.relu(self.conv3(x))
-        x = self.cbn3(x)
-        #x = F.relu(self.conv4(x))
-        #x = self.cbn4(x)
-        #x = F.relu(self.conv5(x))
-        #x = self.cbn5(x)
-        x = x.view(-1, self.num_flat_features(x))
-        #depth_data =depth_data.view(depth_data.shape[0], -1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        z = torch.cat((x, y), dim=1)
-        z = F.relu(self.fc4(z))
-        z = self.fc5(z)
-        """
-        return z
-   
-    def num_flat_features(self, x):
-        size = x.size()[1:]  # all dimensions except the batch dimension
-        num_features = 1
-        for s in size:
-            num_features *= s
-        return num_features
 
 class WashSystem():
     def __init__(self):
@@ -190,7 +90,8 @@ class WashSystem():
             num_workers=2,
             drop_last=True
         )
-        rarm_controller, larm_controller = next(iter(train_dataloader))
+        #rarm_controller, larm_controller = next(iter(train_dataloader))
+        return train_dataloader
 
     def make_model(self):
         self.model = Net()
@@ -235,7 +136,7 @@ class WashSystem():
             losses = 0
             for i, data in enumerate(train_dataloader, 0):
                 input_rarm, input_larm = data
-                x_ = Variable(np.array(X).astype(np.float32).reshape(batch_num, 6))
+                x_ = input_rarm
                 t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
 
                 self.train_optimizer.zero_grad()
