@@ -21,6 +21,17 @@ from network import *
 
 class MyDataset(Dataset):
     def __init__(self, file_path):
+        self.epoch = 1
+        self.sample_num = 16 # ? image size related something
+        self.batch_size = 64
+        self.input_size = 17 #same as z_dim? -> no, angle vector and obj point
+        self.data_shape = hogehoge
+        self.z_dim = 24 #angle vector(7 dim), torque(7 dim), obj point(10 dim)
+        self.lrG = 0.0002
+        self.lrD = 0.0002
+        self.beta1 = 0.5
+        self.beta2 = 0.999    
+
         self.datanum = 10
         self.input_rarm = []
         self.input_larm = []
@@ -93,15 +104,31 @@ class WashSystem():
         #rarm_controller, larm_controller = next(iter(train_dataloader))
         return train_dataloader
 
+        # load dataset
+        self.data_loader = dataloader(self.dataset, self.input_size, self.batch_size)
+
+
     def make_model(self):
         self.model = Net()
         self.model = self.model.to(self.DEVICE)
         self.criterion = nn.BCEWithLogitsLoss()
         self.train_optimizer = optim.Adam(self.model.parameters(), lr=0.001)
-        #self.train_optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
         summary(self.model, [(3, 128, 128), (4,)])
 
-    def predict_callback(self, msg):
+        # networks init
+        self.G = generator(input_dim=self.z_dim, output_dim=self.data_shape, input_size=self.input_size)
+        self.D = discriminator(input_dim=self.data_shape, output_dim=1, input_size=self.input_size)
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=self.lrG, betas=(self.beta1, self.beta2))
+        self.D_optimizer = optim.Adam(self.D.parameters(), lr=self.lrD, betas=(self.beta1, self.beta2))
+
+        self.G.cuda()
+        self.D.cuda()
+        self.BCE_loss = nn.BCELoss().cuda()
+
+        self.sample_z_ = torch.rand((self.batch_size, self.z_dim))
+        self.sample_z_ = self.sample_z_.cuda()
+
+   def predict_callback(self, msg):
         # store past states data
 
         # lpf for state and input
@@ -132,28 +159,86 @@ class WashSystem():
             tensorboard_cnt += 1
 
     def train(self, train_dataloader):
+        self.train_hist = {}
+        self.train_hist['D_loss'] = []
+        self.train_hist['G_loss'] = []
+
+        self.y_real_, self.y_fake_ = torch.ones(self.batch_size, 1), torch.zeros(self.batch_size, 1)
+        self.y_real_, self.y_fake_ = self.y_real_.cuda(), self.y_fake_.cuda()
+
+        self.D.train()
+
         for epoch in range(2):
-            losses = 0
-            for i, data in enumerate(train_dataloader, 0):
-                input_rarm, input_larm = data
-                x_ = input_rarm
-                t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
+            self.G.train()
+            for iter, (x_, _) in enumerate(train_dataloader, 0):
+                if iter == self.data_loader.dataset.__len__() // self.batch_size:
+                    break
 
-                self.train_optimizer.zero_grad()
-                outputs = self.model(x_)
-                loss = self.criterion(outputs.view_as(t_), t_)
-                loss.backward()
-                self.train_optimizer.step()
-                losses += loss.data
+                z_ = torch.rand((self.batch_size, self.z_dim))
+                x_, z_ = x_.cuda(), z_.cuda()
 
-                writer = SummaryWriter(log_dir)
-                running_loss += loss.item()
-                writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
-                if i % 100 == 99: 
-                    #print('[%d, %5d] loss: %.3f' %
-                    #      (epoch + 1, i + 1, running_loss / 100))
-                    running_loss = 0.0
-                tensorboard_cnt += 1
+                # update D network
+                self.D_optimizer.zero_grad()
+
+                D_real = self.D(x_)
+                D_real_loss = self.BCE_loss(D_real, self.y_real_)
+
+                G_ = self.G(z_)
+                D_fake = self.D(G_)
+                D_fake_loss = self.BCE_loss(D_fake, self.y_fake_)
+
+                D_loss = D_real_loss + D_fake_loss
+                self.train_hist['D_loss'].append(D_loss.item())
+
+                D_loss.backward()
+                self.D_optimizer.step()
+
+                # update G network
+                self.G_optimizer.zero_grad()
+
+                G_ = self.G(z_)
+                D_fake = self.D(G_)
+                G_loss = self.BCE_loss(D_fake, self.y_real_)
+                self.train_hist['G_loss'].append(G_loss.item())
+
+                G_loss.backward()
+                self.G_optimizer.step()
+                
+                if ((iter + 1) % 10) == 0:
+                    with torch.no_grad():
+                        tot_num_samples = min(self.sample_num, self.batch_size)
+                        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
+                        #display_process(self.train_hist, self.G, image_frame_dim, self.sample_z_)
+                        #display.clear_output(wait=True)
+                        #display.display(pl.gcf())
+                        #plt.close()
+                       
+        plt.close()
+        print("Training finish!")
+
+    #def train(self, train_dataloader):
+    #    for epoch in range(2):
+    #        losses = 0
+    #        for i, data in enumerate(train_dataloader, 0):
+    #            input_rarm, input_larm = data
+    #            x_ = input_rarm
+    #            t_ = Variable(np.array(Y).astype(np.float32).reshape(batch_num, 2))
+
+    #            self.train_optimizer.zero_grad()
+    #            outputs = self.model(x_)
+    #            loss = self.criterion(outputs.view_as(t_), t_)
+    #            loss.backward()
+    #            self.train_optimizer.step()
+    #            losses += loss.data
+
+    #            writer = SummaryWriter(log_dir)
+    #            running_loss += loss.item()
+    #            writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
+    #            if i % 100 == 99: 
+    #                #print('[%d, %5d] loss: %.3f' %
+    #                #      (epoch + 1, i + 1, running_loss / 100))
+    #                running_loss = 0.0
+    #            tensorboard_cnt += 1
 
     def test(self):
         for data in self:
