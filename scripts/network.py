@@ -18,6 +18,24 @@ def initialize_weights(net):
             m.weight.data.normal_(0, 0.02)
             m.bias.data.zero_()
 
+class Lstm(nn.Module):
+    """
+    inputDim : 17
+    hiddenDim : any number is ok?
+    outputDim : same as imputDim? or only robot state dim?
+    """
+    def __init__(self, inputDim, hiddenDim, outputDim):
+        super(Predictor, self).__init__()
+        self.rnn = nn.LSTM(input_size = inputDim,
+                            hidden_size = hiddenDim,
+                            batch_first = True)
+        self.output_layer = nn.Linear(hiddenDim, outputDim)
+
+    def forward(self, inputs, hidden0=None):
+        output, (hidden, cell) = self.rnn(inputs, hidden0) #LSTM層
+        #output = self.output_layer(output[:, -1, :]) #全結合層
+        return output
+
 class generator(nn.Module):
     def __init__(self, input_dim=100, output_dim=1, input_size=32):
         super(generator, self).__init__()

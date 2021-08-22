@@ -117,7 +117,7 @@ class WashSystem():
         #summary(self.model, [(3, 128, 128), (4,)])
 
         # networks init
-        self.G = generator(input_dim=self.z_dim, output_dim=self.data_shape, input_size=self.input_size)
+        self.G = Lstm(inputDim=self.z_dim, hiddenDim=4, outputDim=self.data_shape)
         self.D = discriminator(input_dim=self.data_shape, output_dim=1, input_size=self.input_size)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=self.lrG, betas=(self.beta1, self.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=self.lrD, betas=(self.beta1, self.beta2))
