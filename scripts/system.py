@@ -22,7 +22,7 @@ from network import *
 
 class MyDataset(Dataset):
     def __init__(self, file_path):
-        self.datanum = 10
+        self.datanum = 149
         self.input_rarm = []
         self.input_larm = []
         self.state_point = []
@@ -44,7 +44,9 @@ class MyDataset(Dataset):
                     with open(os.path.join(dir_name, file), 'rb') as larm:
                         input_larm_controller = yaml.safe_load(larm)
                         self.input_larm = np.append(self.input_larm, input_larm_controller["desired"]["positions"], axis=0)
-        #print(self.input_larm)
+        #print(self.input_larm.shape) 1 dim (data_num * 7)
+        self.input_rarm = self.input_rarm.reshape(-1, 7)
+        self.input_larm = self.input_larm.reshape(-1, 7)
 
     def __len__(self):
         return self.datanum #should be dataset size / batch size
@@ -52,8 +54,10 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         i_rarm = self.input_rarm[idx]
         i_larm = self.input_larm[idx]
+        type(i_rarm)
         i_rarm = torch.from_numpy(np.array(i_rarm)).float()
         i_larm = torch.from_numpy(np.array(i_larm)).float()
+        type(i_rarm)
         return i_rarm, i_larm
 
 class WashSystem():
@@ -110,7 +114,7 @@ class WashSystem():
         self.model = self.model.to(self.DEVICE)
         self.criterion = nn.BCEWithLogitsLoss()
         self.train_optimizer = optim.Adam(self.model.parameters(), lr=0.001)
-        summary(self.model, [(3, 128, 128), (4,)])
+        #summary(self.model, [(3, 128, 128), (4,)])
 
         # networks init
         self.G = generator(input_dim=self.z_dim, output_dim=self.data_shape, input_size=self.input_size)
@@ -173,7 +177,7 @@ class WashSystem():
                 print(iter)
                 print(x_)
                 print("==================")
-                if iter == self.data_loader.dataset.__len__() // self.batch_size:
+                if iter == train_dataloader.dataset.__len__() // self.batch_size:
                     break
 
                 z_ = torch.rand((self.batch_size, self.z_dim))
@@ -312,6 +316,9 @@ if __name__ == '__main__':
     # train model or load model
     if train_flag:
         datasets = MyDataset(FILE_PATH)
+        for i in range(len(datasets)):
+            img = datasets[i]
+            #print(type(img))
         train_dataloader = ws.load_data(datasets)
         #ws.arrange_data()
         ws.make_model()
