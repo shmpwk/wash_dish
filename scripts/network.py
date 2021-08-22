@@ -25,7 +25,7 @@ class Lstm(nn.Module):
     outputDim : same as imputDim? or only robot state dim?
     """
     def __init__(self, inputDim, hiddenDim, outputDim):
-        super(Predictor, self).__init__()
+        super(Lstm, self).__init__()
         self.rnn = nn.LSTM(input_size = inputDim,
                             hidden_size = hiddenDim,
                             batch_first = True)
@@ -65,6 +65,23 @@ class generator(nn.Module):
         x = x.view(-1, 128, (self.input_size // 4), (self.input_size // 4))
         x = self.deconv(x)
 
+        return x
+
+class Discriminator(nn.Module):
+    def __init__(self, input_dim=1, output_dim=1, input_size=32):
+        super(Discriminator, self).__init__()
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.input_size = input_size
+        
+        self.fc = nn.Sequential(
+                nn.Linear(self.input_dim, self.output_dim),
+                nn.Sigmoid(),
+                )
+        initialize_weights(self)
+
+    def forward(self, input):
+        x = self.fc(input)
         return x
 
 class discriminator(nn.Module):

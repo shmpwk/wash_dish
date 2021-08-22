@@ -90,9 +90,9 @@ class WashSystem():
         self.epoch = 1
         self.sample_num = 16 # ? image size related something
         self.batch_size = 64
-        self.input_size = 17 #same as z_dim? -> no, angle vector and obj point
-        self.data_shape = self.input_size # same as input_size??
-        self.z_dim = 24 #angle vector(7 dim), torque(7 dim), obj point(10 dim)
+        self.z_input_size = 17 #same as z_dim? -> no, angle vector and obj point
+        self.data_shape = self.z_input_size # same as input_size??
+        self.x_input_size = 24 #angle vector(7 dim), torque(7 dim), obj point(10 dim)
         self.lrG = 0.0002
         self.lrD = 0.0002
         self.beta1 = 0.5
@@ -117,8 +117,8 @@ class WashSystem():
         #summary(self.model, [(3, 128, 128), (4,)])
 
         # networks init
-        self.G = Lstm(inputDim=self.z_dim, hiddenDim=4, outputDim=self.data_shape)
-        self.D = discriminator(input_dim=self.data_shape, output_dim=1, input_size=self.input_size)
+        self.G = Lstm(inputDim=self.z_input_size, hiddenDim=4, outputDim=self.z_input_size)
+        self.D = Discriminator(input_dim=self.x_input_size, output_dim=1, input_size=self.x_input_size)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=self.lrG, betas=(self.beta1, self.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=self.lrD, betas=(self.beta1, self.beta2))
         self.G.cuda()
