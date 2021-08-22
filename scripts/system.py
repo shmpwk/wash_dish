@@ -11,6 +11,7 @@ import pickle
 import yaml
 import argparse
 import rospy
+import datetime
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
@@ -21,17 +22,6 @@ from network import *
 
 class MyDataset(Dataset):
     def __init__(self, file_path):
-        self.epoch = 1
-        self.sample_num = 16 # ? image size related something
-        self.batch_size = 64
-        self.input_size = 17 #same as z_dim? -> no, angle vector and obj point
-        self.data_shape = hogehoge
-        self.z_dim = 24 #angle vector(7 dim), torque(7 dim), obj point(10 dim)
-        self.lrG = 0.0002
-        self.lrD = 0.0002
-        self.beta1 = 0.5
-        self.beta2 = 0.999    
-
         self.datanum = 10
         self.input_rarm = []
         self.input_larm = []
@@ -93,20 +83,28 @@ class WashSystem():
         # train parameters
         self.LOOP_NUM = 1
 
+        self.epoch = 1
+        self.sample_num = 16 # ? image size related something
+        self.batch_size = 64
+        self.input_size = 17 #same as z_dim? -> no, angle vector and obj point
+        self.data_shape = self.input_size # same as input_size??
+        self.z_dim = 24 #angle vector(7 dim), torque(7 dim), obj point(10 dim)
+        self.lrG = 0.0002
+        self.lrD = 0.0002
+        self.beta1 = 0.5
+        self.beta2 = 0.999    
+
+
     def load_data(self, datasets):
         train_dataloader = torch.utils.data.DataLoader(
             datasets, 
-            batch_size=4, 
+            batch_size=self.batch_size, 
             shuffle=True,
             num_workers=2,
             drop_last=True
         )
         #rarm_controller, larm_controller = next(iter(train_dataloader))
         return train_dataloader
-
-        # load dataset
-        self.data_loader = dataloader(self.dataset, self.input_size, self.batch_size)
-
 
     def make_model(self):
         self.model = Net()
@@ -120,15 +118,14 @@ class WashSystem():
         self.D = discriminator(input_dim=self.data_shape, output_dim=1, input_size=self.input_size)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=self.lrG, betas=(self.beta1, self.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=self.lrD, betas=(self.beta1, self.beta2))
-
         self.G.cuda()
         self.D.cuda()
         self.BCE_loss = nn.BCELoss().cuda()
 
         self.sample_z_ = torch.rand((self.batch_size, self.z_dim))
         self.sample_z_ = self.sample_z_.cuda()
-
-   def predict_callback(self, msg):
+        
+    def predict_callback(self, msg):
         # store past states data
 
         # lpf for state and input
@@ -159,6 +156,9 @@ class WashSystem():
             tensorboard_cnt += 1
 
     def train(self, train_dataloader):
+        now = datetime.datetime.now()  
+        log_dir = './Data/loss/loss_' + now.strftime('%Y%m%d_%H%M%S')
+        tensorboard_cnt = 0
         self.train_hist = {}
         self.train_hist['D_loss'] = []
         self.train_hist['G_loss'] = []
@@ -171,6 +171,9 @@ class WashSystem():
         for epoch in range(2):
             self.G.train()
             for iter, (x_, _) in enumerate(train_dataloader, 0):
+                print(iter)
+                print(x_)
+                print("==================")
                 if iter == self.data_loader.dataset.__len__() // self.batch_size:
                     break
 
@@ -212,8 +215,21 @@ class WashSystem():
                         #display.clear_output(wait=True)
                         #display.display(pl.gcf())
                         #plt.close()
-                       
-        plt.close()
+
+                writer = SummaryWriter(log_dir)
+                D_running_loss += D_loss.item()
+                G_running_loss += G_loss.item()
+                writer.add_scalar("Loss/train", D_loss.item(), tensorboard_cnt) #(epoch + 1) * i)
+                writer.add_scalar("Loss/train", G_loss.item(), tensorboard_cnt) #(epoch + 1) * i)
+                if i % 100 == 99:    # 2 ミニバッチ毎に表示する
+                    print('[%d, %5d] D_loss: %.3f' %
+                          (epoch + 1, i + 1, D_running_loss / 100))
+                    print('[%d, %5d] G_loss: %.3f' %
+                          (epoch + 1, i + 1, G_running_loss / 100))
+                    running_loss = 0.0
+                tensorboard_cnt += 1
+        #writer.flush()  
+        #plt.close()
         print("Training finish!")
 
     #def train(self, train_dataloader):
