@@ -94,7 +94,6 @@ class WashSystem():
         self.beta1 = 0.5
         self.beta2 = 0.999    
 
-
     def load_data(self, datasets):
         train_dataloader = torch.utils.data.DataLoader(
             datasets, 
@@ -275,7 +274,21 @@ class WashSystem():
         
         pub = rospy.Publisher('/hough_pointcloud', PointCloud2, queue_size=100)
         rospy.Rate(30)
-   
+
+    def save_model(self):
+        now = datetime.datetime.now()   
+        lstm_filename = 'Data/trained_gan_model/model_' + now.strftime('%Y%m%d_%H%M%S') + '.pth'
+        lstm_model_path = lstm_filename      
+        # GPU save   
+        ## Save only parameter   
+        torch.save(self.model.state_dict(), lstm_model_path) 
+        ## Save whole model
+        #torch.save(self.model(), lstm_model_path)   
+        #torch.save(self.ae(), encoder_model_path)   
+        # CPU save  
+        #torch.save(self.model.to('cpu').state_dict(), model_path)
+        print("Finished Saving model")    
+
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, lambda signal, frame: sys.exit(0))
 
@@ -315,7 +328,7 @@ if __name__ == '__main__':
         
     # test
     print('[Test] start')            
-    ws.test()
+    #ws.test()
 
     # action
     #if action == 0:
