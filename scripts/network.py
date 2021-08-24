@@ -33,7 +33,7 @@ class Lstm(nn.Module):
 
     def forward(self, inputs, hidden0=None):
         output, (hidden, cell) = self.rnn(inputs, hidden0) #LSTM層
-        #output = self.output_layer(output[:, -1, :]) #全結合層
+        output = self.output_layer(output[:, -1, :]) #全結合層
         return output
 
 class generator(nn.Module):
@@ -70,7 +70,7 @@ class generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, input_dim=1, output_dim=1, input_size=32):
         super(Discriminator, self).__init__()
-        self.input_dim = input_dim
+        self.input_dim = input_dim 
         self.output_dim = output_dim
         self.input_size = input_size
         
@@ -81,8 +81,17 @@ class Discriminator(nn.Module):
         initialize_weights(self)
 
     def forward(self, input):
-        x = self.fc(input)
+        print(input)
+        x = input.view(-1, self.num_flat_features(input))
+        x = self.fc(x)
         return x
+
+    def num_flat_features(self, x):
+        size = x.size()[1:]  # all dimensions except the batch dimension
+        num_features = 1
+        for s in size:
+            num_features *= s
+        return num_features
 
 class discriminator(nn.Module):
     def __init__(self, input_dim=1, output_dim=1, input_size=32):
