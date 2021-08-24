@@ -17,12 +17,14 @@ from torch.utils.data import Dataset
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 from std_msgs.msg import Float64MultiArray, Float64
-
+#from buffer import SimpleBuffer
 from network import *
 
 class MyDataset(Dataset):
     def __init__(self, file_path):
         self.datanum = 0
+        self.seq_length = 10
+        self.buffer_size = 4
         self.input_rarm = []
         self.input_larm = []
         self.state_point = []
@@ -34,6 +36,11 @@ class MyDataset(Dataset):
         state_rforce_key = "r_force.yaml"
         state_lforce_key = "l_force.yaml"
         #state_point_key = point.yaml  # To do
+
+        # data buffer
+        #buf = Simplebuffer(self.seq_length, buffer_size, input_rarm_shape, input_larm_shape, state_rforce_shape, state_lforce_shape, state_point_shape, device=torch.device('cuda'))
+        #input_rarm_buffer, input_larm_buffer, state_rforce_buffer, state_lforce_buffer, state_point_buffer = buf.load(
+
         for dir_name, sub_dirs, files in sorted(os.walk(file_path)):
             for file in sorted(files):
                 if file == state_point_key:
@@ -72,23 +79,31 @@ class MyDataset(Dataset):
         self.state_rforce = self.state_rforce.reshape(-1, 7)
         self.state_lforce = self.state_lforce.reshape(-1, 7)
         self.state_point = self.state_point.reshape(-1, 10)
+        p_arm = np.append(self.input_rarm, self.input_larm, axis=1)
+        f_arm = np.append(self.state_rforce, self.state_lforce, axis=1)
+        arm = np.append(p_arm, f_arm, axis=1)
+        self.dataset = np.append(arm, self.state_point, axis=1)
 
     def __len__(self):
         return self.datanum #should be dataset size / batch size
 
     def __getitem__(self, idx):
-        p_rarm = self.input_rarm[idx]
-        p_larm = self.input_larm[idx]
-        f_rarm = self.state_rforce[idx]
-        f_larm = self.state_lforce[idx]
-        obj = self.state_point
-        p_rarm = torch.from_numpy(np.array(p_rarm)).float()
-        p_larm = torch.from_numpy(np.array(p_larm)).float()
-        f_rarm = torch.from_numpy(np.array(f_rarm)).float()
-        f_larm = torch.from_numpy(np.array(f_larm)).float()
-        obj = torch.from_numpy(np.array(obj)).float()
-        type(p_rarm)
-        return p_rarm, p_larm
+        dataset = self.dataset[idx]
+        dataset = torch.from_numpy(np.array(dataset)).float()
+        return dataset
+        
+        #p_rarm = self.input_rarm[idx]
+        #p_larm = self.input_larm[idx]
+        #f_rarm = self.state_rforce[idx]
+        #f_larm = self.state_lforce[idx]
+        #obj = self.state_point
+        #p_rarm = torch.from_numpy(np.array(p_rarm)).float()
+        #p_larm = torch.from_numpy(np.array(p_larm)).float()
+        #f_rarm = torch.from_numpy(np.array(f_rarm)).float()
+        #f_larm = torch.from_numpy(np.array(f_larm)).float()
+        #obj = torch.from_numpy(np.array(obj)).float()
+        #type(p_rarm)
+        #return p_rarm, p_larm
 
 class WashSystem():
     def __init__(self):
@@ -119,8 +134,8 @@ class WashSystem():
 
         self.epoch = 1
         self.sample_num = 16 # ? image size related something
-        self.batch_size = 64
-        self.z_input_dim = 17 #same as z_dim? -> no, angle vector and obj point
+        self.batch_size = 4
+        self.z_input_dim = 38 #same as z_dim? -> no, angle vector and obj point
         self.data_shape = self.z_input_dim # same as input_size??
         self.x_input_size = 38 #angle vector(7*2 dim), torque(7*2 dim), obj point(10 dim)
         self.lrG = 0.0002
@@ -203,7 +218,7 @@ class WashSystem():
 
         for epoch in range(2):
             self.G.train()
-            for iter, (x_, _) in enumerate(train_dataloader, 0):
+            for iter, x_ in enumerate(train_dataloader, 0):
                 if iter == train_dataloader.dataset.__len__() // self.batch_size:
                     break
 
