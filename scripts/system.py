@@ -23,7 +23,8 @@ from network import *
 class MyDataset(Dataset):
     def __init__(self, file_path):
         self.datanum = 0
-        self.seq_length = 10
+        self.seq_num = -1
+        self.seq_length = 30
         self.buffer_size = 4
         self.input_rarm = []
         self.input_larm = []
@@ -42,6 +43,8 @@ class MyDataset(Dataset):
         #input_rarm_buffer, input_larm_buffer, state_rforce_buffer, state_lforce_buffer, state_point_buffer = buf.load(
 
         for dir_name, sub_dirs, files in sorted(os.walk(file_path)):
+            if sub_dirs != []:
+                self.seq_num += 1 #next seq
             for file in sorted(files):
                 if file == state_point_key:
                     with open(os.path.join(dir_name, file), 'rb') as obj:
@@ -74,18 +77,21 @@ class MyDataset(Dataset):
                         self.datanum += 1
 
         #print(self.input_larm.shape) 1 dim (data_num * 7)
-        self.input_rarm = self.input_rarm.reshape(-1, 7)
-        self.input_larm = self.input_larm.reshape(-1, 7)
-        self.state_rforce = self.state_rforce.reshape(-1, 7)
-        self.state_lforce = self.state_lforce.reshape(-1, 7)
-        self.state_point = self.state_point.reshape(-1, 10)
-        p_arm = np.append(self.input_rarm, self.input_larm, axis=1)
-        f_arm = np.append(self.state_rforce, self.state_lforce, axis=1)
-        arm = np.append(p_arm, f_arm, axis=1)
-        self.dataset = np.append(arm, self.state_point, axis=1)
+        self.input_rarm = self.input_rarm.reshape(self.seq_num, -1, 7)
+        self.input_larm = self.input_larm.reshape(self.seq_num, -1, 7)
+        self.state_rforce = self.state_rforce.reshape(self.seq_num, -1, 7)
+        self.state_lforce = self.state_lforce.reshape(self.seq_num, -1, 7)
+        self.state_point = self.state_point.reshape(self.seq_num, -1, 10)
+        p_arm = np.append(self.input_rarm, self.input_larm, axis=2)
+        f_arm = np.append(self.state_rforce, self.state_lforce, axis=2)
+        arm = np.append(p_arm, f_arm, axis=2)
+        self.dataset = np.append(arm, self.state_point, axis=2)
+        print(self.dataset.shape)
+
 
     def __len__(self):
-        return self.datanum #should be dataset size / batch size
+        #return self.datanum #should be dataset size / batch size
+        return self.seq_num / 4
 
     def __getitem__(self, idx):
         dataset = self.dataset[idx]
@@ -353,7 +359,7 @@ if __name__ == '__main__':
     online_training_ = args.online_training   # which model
     
     ws = WashSystem()
-    FILE_PATH = "Data/seq_data/wash_dish/date_forget"
+    FILE_PATH = "Data/seq_data/wash_dish"
     
     # train model or load model
     if train_flag:
