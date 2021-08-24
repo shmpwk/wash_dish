@@ -22,7 +22,7 @@ from network import *
 
 class MyDataset(Dataset):
     def __init__(self, file_path):
-        self.datanum = 149
+        self.datanum = 0
         self.input_rarm = []
         self.input_larm = []
         self.state_point = []
@@ -30,35 +30,65 @@ class MyDataset(Dataset):
         self.state_lforce = []
         input_rarm_key = "r_arm_controller.yaml"
         input_larm_key = "l_arm_controller.yaml"
-        state_point_key = "obj_point.yaml"
+        state_point_key = "bboxes.yaml"
         state_rforce_key = "r_force.yaml"
         state_lforce_key = "l_force.yaml"
         #state_point_key = point.yaml  # To do
         for dir_name, sub_dirs, files in sorted(os.walk(file_path)):
             for file in sorted(files):
+                if file == state_point_key:
+                    with open(os.path.join(dir_name, file), 'rb') as obj:
+                        obj_point = yaml.safe_load(obj)
+                        if obj_point["boxes"] == []:
+                            break
+                        pos_x = obj_point["boxes"][0]["pose"]["position"]["x"]
+                        pos_y = obj_point["boxes"][0]["pose"]["position"]["y"]
+                        pos_z = obj_point["boxes"][0]["pose"]["position"]["z"]
+                        ori_x = obj_point["boxes"][0]["pose"]["orientation"]["x"]
+                        ori_y = obj_point["boxes"][0]["pose"]["orientation"]["y"]
+                        ori_z = obj_point["boxes"][0]["pose"]["orientation"]["z"]
+                        ori_w = obj_point["boxes"][0]["pose"]["orientation"]["w"]
+                        dim_x = obj_point["boxes"][0]["dimensions"]["x"]
+                        dim_y = obj_point["boxes"][0]["dimensions"]["y"]
+                        dim_z = obj_point["boxes"][0]["dimensions"]["z"]
+                        obj_point_arr = [pos_x, pos_y, pos_z, ori_x, ori_y, ori_z, ori_w, dim_x, dim_y, dim_z]
+                        self.state_point = np.append(self.state_point, obj_point_arr)
                 if file == input_rarm_key:
                     with open(os.path.join(dir_name, file), 'rb') as rarm:
                         input_rarm_controller = yaml.safe_load(rarm)
                         self.input_rarm = np.append(self.input_rarm, input_rarm_controller["desired"]["positions"], axis=0)
+                        self.state_rforce = np.append(self.state_rforce, input_rarm_controller["desired"]["effort"], axis=0)
                 if file == input_larm_key:
                     with open(os.path.join(dir_name, file), 'rb') as larm:
                         input_larm_controller = yaml.safe_load(larm)
                         self.input_larm = np.append(self.input_larm, input_larm_controller["desired"]["positions"], axis=0)
+                        self.state_lforce = np.append(self.state_lforce, input_larm_controller["desired"]["effort"], axis=0)
+
+                        self.datanum += 1
+
         #print(self.input_larm.shape) 1 dim (data_num * 7)
         self.input_rarm = self.input_rarm.reshape(-1, 7)
         self.input_larm = self.input_larm.reshape(-1, 7)
+        self.state_rforce = self.state_rforce.reshape(-1, 7)
+        self.state_lforce = self.state_lforce.reshape(-1, 7)
+        self.state_point = self.state_point.reshape(-1, 10)
 
     def __len__(self):
         return self.datanum #should be dataset size / batch size
 
     def __getitem__(self, idx):
-        i_rarm = self.input_rarm[idx]
-        i_larm = self.input_larm[idx]
-        type(i_rarm)
-        i_rarm = torch.from_numpy(np.array(i_rarm)).float()
-        i_larm = torch.from_numpy(np.array(i_larm)).float()
-        type(i_rarm)
-        return i_rarm, i_larm
+        p_rarm = self.input_rarm[idx]
+        p_larm = self.input_larm[idx]
+        f_rarm = self.state_rforce[idx]
+        f_larm = self.state_lforce[idx]
+        obj = self.state_point
+        p_rarm = torch.from_numpy(np.array(p_rarm)).float()
+        p_larm = torch.from_numpy(np.array(p_larm)).float()
+        f_rarm = torch.from_numpy(np.array(f_rarm)).float()
+        f_larm = torch.from_numpy(np.array(f_larm)).float()
+        obj = torch.from_numpy(np.array(obj)).float()
+        type(p_rarm)
+        return p_rarm, p_larm
 
 class WashSystem():
     def __init__(self):
@@ -90,9 +120,9 @@ class WashSystem():
         self.epoch = 1
         self.sample_num = 16 # ? image size related something
         self.batch_size = 64
-        self.z_input_size = 17 #same as z_dim? -> no, angle vector and obj point
-        self.data_shape = self.z_input_size # same as input_size??
-        self.x_input_size = 24 #angle vector(7 dim), torque(7 dim), obj point(10 dim)
+        self.z_input_dim = 17 #same as z_dim? -> no, angle vector and obj point
+        self.data_shape = self.z_input_dim # same as input_size??
+        self.x_input_size = 38 #angle vector(7*2 dim), torque(7*2 dim), obj point(10 dim)
         self.lrG = 0.0002
         self.lrD = 0.0002
         self.beta1 = 0.5
@@ -117,7 +147,7 @@ class WashSystem():
         #summary(self.model, [(3, 128, 128), (4,)])
 
         # networks init
-        self.G = Lstm(inputDim=self.z_input_size, hiddenDim=4, outputDim=self.z_input_size)
+        self.G = Lstm(inputDim=self.z_input_dim, hiddenDim=4, outputDim=self.z_input_dim)
         self.D = Discriminator(input_dim=self.x_input_size, output_dim=1, input_size=self.x_input_size)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=self.lrG, betas=(self.beta1, self.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=self.lrD, betas=(self.beta1, self.beta2))
@@ -125,8 +155,8 @@ class WashSystem():
         self.D.cuda()
         self.BCE_loss = nn.BCELoss().cuda()
 
-        self.sample_z_ = torch.rand((self.batch_size, self.z_dim))
-        self.sample_z_ = self.sample_z_.cuda()
+        #self.sample_z_ = torch.rand((self.batch_size, self.z_dim))
+        #self.sample_z_ = self.sample_z_.cuda()
         
     def predict_callback(self, msg):
         # store past states data
@@ -174,13 +204,10 @@ class WashSystem():
         for epoch in range(2):
             self.G.train()
             for iter, (x_, _) in enumerate(train_dataloader, 0):
-                print(iter)
-                print(x_)
-                print("==================")
                 if iter == train_dataloader.dataset.__len__() // self.batch_size:
                     break
 
-                z_ = torch.rand((self.batch_size, self.z_dim))
+                z_ = torch.rand((self.batch_size, self.z_input_dim))
                 x_, z_ = x_.cuda(), z_.cuda()
 
                 # update D network
@@ -311,7 +338,7 @@ if __name__ == '__main__':
     online_training_ = args.online_training   # which model
     
     ws = WashSystem()
-    FILE_PATH = "Data/seq_data/wash_dish"
+    FILE_PATH = "Data/seq_data/wash_dish/date_forget"
     
     # train model or load model
     if train_flag:
