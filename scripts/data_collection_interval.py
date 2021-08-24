@@ -3,8 +3,8 @@ import rospy
 from std_srvs.srv import Trigger, TriggerRequest
 
 def main():
+    rospy.init_node('data_collection_interval')
     try:
-        rospy.init_node('data_collection_interval')
         r = rospy.Rate(1)
         while not rospy.is_shutdown():
             rospy.wait_for_service("/seq_data_collection/save_request")

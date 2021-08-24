@@ -12,9 +12,12 @@
       message_filters: true
       approximate_sync: true
       queue_size: 1000
-      slop: 100
-      method: request
+      slop: 10000000
+      method: timer
+      hz: 1.0
       save_dir: ~/Data/seq_data/wash_dish 
+      wait_save_request: true
+      wait_timer: true
       topics:
         - name: /kinect_head_remote/rgb/image_rect_color
           msg_class: sensor_msgs/Image
