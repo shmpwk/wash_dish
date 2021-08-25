@@ -25,7 +25,9 @@ class MyDataset(Dataset):
         self.datanum = 0
         self.seq_num = -1
         self.seq_length = 30
+        self.time_steps = 5
         self.buffer_size = 2
+        self.batch_size = 2
         self.input_rarm = []
         self.input_larm = []
         self.state_point = []
@@ -86,17 +88,20 @@ class MyDataset(Dataset):
         f_arm = np.append(self.state_rforce, self.state_lforce, axis=2)
         arm = np.append(p_arm, f_arm, axis=2)
         self.dataset = np.append(arm, self.state_point, axis=2)
-        print(self.dataset.shape)
-
+        print(self.dataset.shape) # now (dataset num, seq_length, z_input_dim) # (time_step, data_dim)??
 
     def __len__(self):
-        #return self.datanum #should be dataset size / batch size
-        return self.seq_num / 2
+        #return self.datanum #should be dataset size / batch size ? 
+        #print((self.seq_length - self.time_steps) * self.seq_num) #/ self.batch_size)
+        return (self.seq_length - self.time_steps) * self.seq_num #/ self.batch_size # len(self.dataset) - self.time_steps  (30-5)/2*4=50 
 
     def __getitem__(self, idx):
-        dataset = self.dataset[idx]
+        j = int(idx  / (self.seq_length - self.time_steps))
+        dataset = self.dataset[j,idx%(self.seq_length-self.time_steps):idx%(self.seq_length-self.time_steps)+self.time_steps,:]
+        label = self.dataset[j,(idx+self.time_steps)/self.seq_length,:]
         dataset = torch.from_numpy(np.array(dataset)).float()
-        return dataset
+        label = torch.from_numpy(np.array(label)).float()
+        return dataset, label  # dataset.shape = (time_steps, 38), label.shape = (1, 38)
         
         #p_rarm = self.input_rarm[idx]
         #p_larm = self.input_larm[idx]
@@ -137,13 +142,15 @@ class WashSystem():
 
         # train parameters
         self.LOOP_NUM = 1
+        self.time_steps = 5
 
         self.epoch = 1
         self.sample_num = 16 # ? image size related something
-        self.batch_size = 2
+        self.batch_size = 2 #batch_size is 2 but want to change seq_size to data_length
         self.z_input_dim = 38 #same as z_dim? -> no, angle vector and obj point
         self.data_shape = self.z_input_dim # same as input_size??
         self.x_input_size = 24 #angle vector(7*2 dim), obj point(10 dim)
+        self.data_length = 5
         self.lrG = 0.0002
         self.lrD = 0.0002
         self.beta1 = 0.5
@@ -157,7 +164,7 @@ class WashSystem():
             num_workers=2,
             drop_last=True
         )
-        tmp = next(iter(train_dataloader))
+        #tmp = next(iter(train_dataloader))
         return train_dataloader
 
     def make_model(self):
@@ -220,15 +227,17 @@ class WashSystem():
             training_accuracy = 0.0
             for i, data in enumerate(train_dataloader, 0):
                 self.G_optimizer.zero_grad()
-                data = data.float().to(self.DEVICE)
+                z, t = data
+                z = z.float().to(self.DEVICE)
+                t = t.float().to(self.DEVICE)
                 # data_next(t) =G(data(0:t-1))
-                data_next = self.G(data)
-                loss = self.criterion(data_next, data[:,29,:])
+                data_next = self.G(z)
+                loss = self.criterion(data_next, t)
                 loss.backward()
                 self.G_optimizer.step()
                 running_loss += loss.item()
 
-                training_accuracy += np.sum(np.abs((data_next.data.cpu() - data[:,29,:].data.cpu()).numpy()) < 0.1)
+                training_accuracy += np.sum(np.abs((data_next.data.cpu() - t.data.cpu()).numpy()) < 0.1)
                 writer = SummaryWriter(log_dir)
                 writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
                 if i % 100 == 99: 
@@ -256,8 +265,6 @@ class WashSystem():
         for epoch in range(2):
             self.G.train()
             for iter, x_ in enumerate(train_dataloader, 0):
-                print(iter)
-                print("---")
                 if iter == train_dataloader.dataset.__len__() // self.batch_size:
                     break
 
