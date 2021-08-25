@@ -141,7 +141,7 @@ class WashSystem():
         self.now_input = [0.7, 0]
 
         # train parameters
-        self.LOOP_NUM = 1
+        self.LOOP_NUM = 10
         self.time_steps = 5
 
         self.epoch = 1
@@ -411,8 +411,9 @@ if __name__ == '__main__':
         train_dataloader = ws.load_data(datasets)
         #ws.arrange_data()
         ws.make_model()
-        print('[Train] start')        
+        print('[PreTrain] start')        
         ws.pretrain(train_dataloader)
+        print('[Train] start')        
         ws.train(train_dataloader)
         ws.save_model()
     #else:
