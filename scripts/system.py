@@ -163,7 +163,8 @@ class WashSystem():
     def make_model(self):
         self.model = Net()
         self.model = self.model.to(self.DEVICE)
-        self.criterion = nn.BCEWithLogitsLoss()
+        #self.criterion = nn.BCEWithLogitsLoss()
+        self.criterion = nn.MSELoss()
         self.train_optimizer = optim.Adam(self.model.parameters(), lr=0.001)
         #summary(self.model, [(3, 128, 128), (4,)])
 
@@ -208,6 +209,36 @@ class WashSystem():
                 #      (epoch + 1, i + 1, running_loss / 100))
                 running_loss = 0.0
             tensorboard_cnt += 1
+
+    def pretrain(self, train_dataloader):
+        now = datetime.datetime.now()
+        tensorboard_cnt = 0
+        log_dir = 'data/loss/loss_' + now.strftime('%Y%m%d_%H%M%S')
+        for epoch in range(10):
+            # training
+            running_loss = 0.0
+            training_accuracy = 0.0
+            for i, data in enumerate(train_dataloader, 0):
+                self.G_optimizer.zero_grad()
+                data = data.float().to(self.DEVICE)
+                # data_next(t) =G(data(0:t-1))
+                data_next = self.G(data)
+                loss = self.criterion(data_next, data[:,29,:])
+                loss.backward()
+                self.G_optimizer.step()
+                running_loss += loss.item()
+
+                training_accuracy += np.sum(np.abs((data_next.data.cpu() - data[:,29,:].data.cpu()).numpy()) < 0.1)
+                writer = SummaryWriter(log_dir)
+                writer.add_scalar("Loss/train", loss.item(), tensorboard_cnt) #(epoch + 1) * i)
+                if i % 100 == 99: 
+                    print('[%d, %5d] loss: %.3f' %
+                          (epoch + 1, i + 1, running_loss / 100))
+                    running_loss = 0.0
+                tensorboard_cnt += 1
+
+            print('%d loss: %.3f, training_accuracy: %.5f' % (
+                epoch + 1, running_loss, training_accuracy))
 
     def train(self, train_dataloader):
         now = datetime.datetime.now()  
@@ -374,7 +405,7 @@ if __name__ == '__main__':
         #ws.arrange_data()
         ws.make_model()
         print('[Train] start')        
-
+        ws.pretrain(train_dataloader)
         ws.train(train_dataloader)
         ws.save_model()
     #else:
