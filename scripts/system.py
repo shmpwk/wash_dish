@@ -25,7 +25,7 @@ class MyDataset(Dataset):
         self.datanum = 0
         self.seq_num = -1
         self.seq_length = 30
-        self.buffer_size = 4
+        self.buffer_size = 2
         self.input_rarm = []
         self.input_larm = []
         self.state_point = []
@@ -91,7 +91,7 @@ class MyDataset(Dataset):
 
     def __len__(self):
         #return self.datanum #should be dataset size / batch size
-        return self.seq_num / 4
+        return self.seq_num / 2
 
     def __getitem__(self, idx):
         dataset = self.dataset[idx]
@@ -140,10 +140,10 @@ class WashSystem():
 
         self.epoch = 1
         self.sample_num = 16 # ? image size related something
-        self.batch_size = 4
+        self.batch_size = 2
         self.z_input_dim = 38 #same as z_dim? -> no, angle vector and obj point
         self.data_shape = self.z_input_dim # same as input_size??
-        self.x_input_size = 38 #angle vector(7*2 dim), torque(7*2 dim), obj point(10 dim)
+        self.x_input_size = 24 #angle vector(7*2 dim), obj point(10 dim)
         self.lrG = 0.0002
         self.lrD = 0.0002
         self.beta1 = 0.5
@@ -157,7 +157,7 @@ class WashSystem():
             num_workers=2,
             drop_last=True
         )
-        #rarm_controller, larm_controller = next(iter(train_dataloader))
+        tmp = next(iter(train_dataloader))
         return train_dataloader
 
     def make_model(self):
@@ -168,8 +168,8 @@ class WashSystem():
         #summary(self.model, [(3, 128, 128), (4,)])
 
         # networks init
-        self.G = Lstm(inputDim=self.z_input_dim, hiddenDim=4, outputDim=self.z_input_dim)
-        self.D = Discriminator(input_dim=self.x_input_size, output_dim=1, input_size=self.x_input_size)
+        self.G = Lstm(inputDim=self.z_input_dim, hiddenDim=4, outputDim=self.z_input_dim) #(38,4,38)
+        self.D = Discriminator(input_dim=self.x_input_size, output_dim=1, input_size=self.x_input_size) #(24,1,)
         self.G_optimizer = optim.Adam(self.G.parameters(), lr=self.lrG, betas=(self.beta1, self.beta2))
         self.D_optimizer = optim.Adam(self.D.parameters(), lr=self.lrD, betas=(self.beta1, self.beta2))
         self.G.cuda()
@@ -225,10 +225,12 @@ class WashSystem():
         for epoch in range(2):
             self.G.train()
             for iter, x_ in enumerate(train_dataloader, 0):
+                print(iter)
+                print("---")
                 if iter == train_dataloader.dataset.__len__() // self.batch_size:
                     break
 
-                z_ = torch.rand((self.batch_size, self.z_input_dim))
+                z_ = torch.rand((self.batch_size, 30, self.z_input_dim))
                 x_, z_ = x_.cuda(), z_.cuda()
 
                 # update D network
@@ -238,6 +240,7 @@ class WashSystem():
                 D_real_loss = self.BCE_loss(D_real, self.y_real_)
 
                 G_ = self.G(z_)
+                print(G_.shape)
                 D_fake = self.D(G_)
                 D_fake_loss = self.BCE_loss(D_fake, self.y_fake_)
 
@@ -371,6 +374,7 @@ if __name__ == '__main__':
         #ws.arrange_data()
         ws.make_model()
         print('[Train] start')        
+
         ws.train(train_dataloader)
         ws.save_model()
     #else:
