@@ -86,7 +86,7 @@ class MyDataset(Dataset):
         self.state_point = self.state_point.reshape(self.seq_num, -1, 10)
         p_arm = np.append(self.input_rarm, self.input_larm, axis=2)
         f_arm = np.append(self.state_rforce, self.state_lforce, axis=2)
-        arm = np.append(p_arm, f_arm, axis=2)
+        arm = np.append(f_arm, p_arm, axis=2)
         self.dataset = np.append(arm, self.state_point, axis=2)
         print(self.dataset.shape) # now (dataset num, seq_length, z_input_dim) # (time_step, data_dim)??
 
@@ -230,7 +230,8 @@ class WashSystem():
                 z, t = data
                 z = z.float().to(self.DEVICE)
                 t = t.float().to(self.DEVICE)
-                # data_next(t) =G(data(0:t-1))
+                #print(z.shape) #(2,5,38)
+                #print(t.shape) #(2,38)
                 data_next = self.G(z)
                 loss = self.criterion(data_next, t)
                 loss.backward()
@@ -256,6 +257,9 @@ class WashSystem():
         self.train_hist = {}
         self.train_hist['D_loss'] = []
         self.train_hist['G_loss'] = []
+        D_running_loss = 0.0
+        G_running_loss = 0.0
+        training_accuracy = 0.0
 
         self.y_real_, self.y_fake_ = torch.ones(self.batch_size, 1), torch.zeros(self.batch_size, 1)
         self.y_real_, self.y_fake_ = self.y_real_.cuda(), self.y_fake_.cuda()
@@ -264,21 +268,24 @@ class WashSystem():
 
         for epoch in range(2):
             self.G.train()
-            for iter, x_ in enumerate(train_dataloader, 0):
+            for iter, data in enumerate(train_dataloader, 0):
                 if iter == train_dataloader.dataset.__len__() // self.batch_size:
                     break
+                x_, t_ = data
 
-                z_ = torch.rand((self.batch_size, 30, self.z_input_dim))
-                x_, z_ = x_.cuda(), z_.cuda()
+                z_ = torch.rand((self.batch_size, 5, self.z_input_dim))
+                x_, z_ = x_.to(self.DEVICE), z_.to(self.DEVICE)
 
                 # update D network
                 self.D_optimizer.zero_grad()
 
+                x_ = x_[:,0,14:38] #from (2,5,38) to (2,5,24)
                 D_real = self.D(x_)
                 D_real_loss = self.BCE_loss(D_real, self.y_real_)
 
                 G_ = self.G(z_)
-                print(G_.shape)
+                G_ = G_[:,14:38]
+                #print(G_.shape) #(self.batch_size, 24)
                 D_fake = self.D(G_)
                 D_fake_loss = self.BCE_loss(D_fake, self.y_fake_)
 
@@ -292,6 +299,7 @@ class WashSystem():
                 self.G_optimizer.zero_grad()
 
                 G_ = self.G(z_)
+                G_ = G_[:,14:38]
                 D_fake = self.D(G_)
                 G_loss = self.BCE_loss(D_fake, self.y_real_)
                 self.train_hist['G_loss'].append(G_loss.item())
@@ -412,7 +420,7 @@ if __name__ == '__main__':
         #ws.arrange_data()
         ws.make_model()
         print('[PreTrain] start')        
-        ws.pretrain(train_dataloader)
+        #ws.pretrain(train_dataloader)
         print('[Train] start')        
         ws.train(train_dataloader)
         ws.save_model()

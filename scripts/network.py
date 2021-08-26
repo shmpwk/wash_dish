@@ -75,15 +75,17 @@ class Discriminator(nn.Module):
         self.input_size = input_size
         
         self.fc = nn.Sequential(
-            nn.Linear(1140, 512),    
-            nn.BatchNorm1d(512),
-            nn.LeakyReLU(0.2),
-            nn.Linear(512, self.output_dim),
+            #nn.Linear(1140, 512),    
+            #nn.BatchNorm1d(512),
+            #nn.LeakyReLU(0.2),
+            #nn.Linear(512, self.output_dim),
+            nn.Linear(24, self.output_dim),
             nn.Sigmoid(),
                 )
         initialize_weights(self)
 
     def forward(self, input):
+        input = input.reshape(2, 24) #To do it is tmp.
         x = input.view(-1, self.num_flat_features(input))
         x = self.fc(x)
         return x
